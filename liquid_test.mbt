@@ -3025,6 +3025,304 @@ test "where filter chaining" {
   assert_eq(result.contains("Book"), false)
 }
 
+// Coverage Tests - Edge Cases and Error Conditions
+test "filter edge cases non-string inputs" {
+  // Test filters with non-string inputs to improve coverage
+  let num_val = number_value(42.0)
+  let bool_val = bool_value(true)
+  let null_val = null_value()
+  
+  // Test filters that should handle non-string gracefully
+  assert_eq(apply_filter(num_val, "strip").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "escape").to_string(), "true")
+  assert_eq(apply_filter(null_val, "upcase").to_string(), "null")
+  assert_eq(apply_filter(num_val, "capitalize").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "split").to_string(), "true")
+  assert_eq(apply_filter(null_val, "replace").to_string(), "null")
+  assert_eq(apply_filter(num_val, "remove").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "prepend").to_string(), "true")
+  assert_eq(apply_filter(null_val, "append").to_string(), "null")
+  assert_eq(apply_filter(num_val, "newline_to_br").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "strip_html").to_string(), "true")
+  assert_eq(apply_filter(null_val, "strip_newlines").to_string(), "null")
+}
+
+test "filter edge cases non-array inputs" {
+  // Test array filters with non-array inputs
+  let str_val = string_value("hello")
+  let num_val = number_value(42.0)
+  let bool_val = bool_value(true)
+  
+  assert_eq(apply_filter(str_val, "join").to_string(), "hello")
+  assert_eq(apply_filter(num_val, "select").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "reject").to_string(), "true")
+  assert_eq(apply_filter(str_val, "compact").to_string(), "hello")
+  assert_eq(apply_filter(num_val, "uniq").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "flatten").to_string(), "true")
+  assert_eq(apply_filter(str_val, "group_by").to_string(), "hello")
+  assert_eq(apply_filter(num_val, "map").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "where").to_string(), "true")
+  assert_eq(apply_filter(str_val, "offset").to_string(), "hello")
+  assert_eq(apply_filter(num_val, "limit").to_string(), "42")
+}
+
+test "filter edge cases non-number inputs" {
+  // Test math filters with non-number inputs
+  let str_val = string_value("hello")
+  let arr_val = array_value([string_value("test")])
+  let bool_val = bool_value(true)
+  
+  assert_eq(apply_filter(str_val, "plus").to_string(), "hello")
+  assert_eq(apply_filter(arr_val, "minus").to_string(), "[test]")
+  assert_eq(apply_filter(bool_val, "times").to_string(), "true")
+  assert_eq(apply_filter(str_val, "divided_by").to_string(), "hello")
+  assert_eq(apply_filter(arr_val, "modulo").to_string(), "[test]")
+  assert_eq(apply_filter(bool_val, "round").to_string(), "true")
+  assert_eq(apply_filter(str_val, "ceil").to_string(), "hello")
+  assert_eq(apply_filter(arr_val, "floor").to_string(), "[test]")
+  assert_eq(apply_filter(bool_val, "abs").to_string(), "true")
+}
+
+test "filter edge cases date filters non-string" {
+  // Test date filters with non-string inputs
+  let num_val = number_value(42.0)
+  let bool_val = bool_value(true)
+  let arr_val = array_value([string_value("test")])
+  
+  assert_eq(apply_filter(num_val, "date").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "date_to_string").to_string(), "true")
+  assert_eq(apply_filter(arr_val, "date_to_xmlschema").to_string(), "[test]")
+  assert_eq(apply_filter(num_val, "date_to_rfc822").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "strftime").to_string(), "true")
+}
+
+test "filter edge cases url filters non-string" {
+  // Test URL filters with non-string inputs
+  let num_val = number_value(42.0)
+  let bool_val = bool_value(true)
+  let arr_val = array_value([string_value("test")])
+  
+  assert_eq(apply_filter(num_val, "url_encode").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "url_decode").to_string(), "true")
+  assert_eq(apply_filter(arr_val, "asset_url").to_string(), "[test]")
+  assert_eq(apply_filter(num_val, "absolute_url").to_string(), "42")
+  assert_eq(apply_filter(bool_val, "relative_url").to_string(), "true")
+}
+
+test "filter edge cases money filters non-number" {
+  // Test money filters with non-number/string inputs
+  let arr_val = array_value([string_value("test")])
+  let bool_val = bool_value(true)
+  let null_val = null_value()
+  
+  assert_eq(apply_filter(arr_val, "money").to_string(), "[test]")
+  assert_eq(apply_filter(bool_val, "money_with_currency").to_string(), "true")
+  assert_eq(apply_filter(null_val, "money_without_currency").to_string(), "null")
+  assert_eq(apply_filter(arr_val, "money_without_trailing_zeros").to_string(), "[test]")
+}
+
+test "filter parameter edge cases" {
+  // Test various parameter edge cases to improve coverage
+  
+  // Test slice with different start positions
+  let template1 = parse("{{ items | slice: 0 }}")
+  let context1 = LiquidContext::new()
+  let items1 = array_value([string_value("a"), string_value("b")])
+  context1.set("items", items1)
+  let result1 = template1.render(context1)
+  assert_eq(result1, "[a, b]")  // Start at 0
+  
+  // Test slice with position 3
+  let template2 = parse("{{ items | slice: 3 }}")
+  let context2 = LiquidContext::new()
+  let items2 = array_value([string_value("a"), string_value("b"), string_value("c"), string_value("d")])
+  context2.set("items", items2)
+  let result2 = template2.render(context2)
+  assert_eq(result2, "[d]")  // Start at 3
+  
+  // Test offset with different values
+  let template3 = parse("{{ items | offset: 0 }}")
+  let context3 = LiquidContext::new()
+  context3.set("items", items2)
+  let result3 = template3.render(context3)
+  assert_eq(result3, "[a, b, c, d]")  // No offset
+  
+  // Test offset with 3
+  let template4 = parse("{{ items | offset: 3 }}")
+  let context4 = LiquidContext::new()
+  context4.set("items", items2)
+  let result4 = template4.render(context4)
+  assert_eq(result4, "[d]")  // Skip first 3
+  
+  // Test limit with 1
+  let template5 = parse("{{ items | limit: 1 }}")
+  let context5 = LiquidContext::new()
+  context5.set("items", items2)
+  let result5 = template5.render(context5)
+  assert_eq(result5, "[a]")  // Take only 1
+  
+  // Test limit with 4
+  let template6 = parse("{{ items | limit: 4 }}")
+  let context6 = LiquidContext::new()
+  context6.set("items", items2)
+  let result6 = template6.render(context6)
+  assert_eq(result6, "[a, b, c, d]")  // Take 4
+}
+
+test "empty string and array edge cases" {
+  // Test edge cases with empty strings and arrays
+  let empty_str = string_value("")
+  let empty_arr = array_value([])
+  
+  // Test capitalize with empty string
+  assert_eq(apply_filter(empty_str, "capitalize").to_string(), "")
+  
+  // Test first/last with empty arrays
+  assert_eq(apply_filter(empty_arr, "first").to_string(), "null")
+  assert_eq(apply_filter(empty_arr, "last").to_string(), "null")
+  
+  // Test first/last with empty strings
+  assert_eq(apply_filter(empty_str, "first").to_string(), "null")
+  assert_eq(apply_filter(empty_str, "last").to_string(), "null")
+  
+  // Test truncate with short string
+  let short_str = string_value("short")
+  assert_eq(apply_filter(short_str, "truncate").to_string(), "short")
+}
+
+test "array filter edge cases" {
+  // Test array filters with edge cases
+  let mixed_arr = array_value([
+    string_value(""),  // Empty string
+    array_value([]),   // Empty array
+    object_value(Map::new()),  // Empty object
+    null_value(),      // Null
+    number_value(42.0) // Number
+  ])
+  
+  // Test select with mixed types
+  let select_result = apply_filter(mixed_arr, "select")
+  assert_eq(select_result.to_string().contains("42"), true)  // Should include number
+  
+  // Test reject with mixed types  
+  let reject_result = apply_filter(mixed_arr, "reject")
+  assert_eq(reject_result.to_string().contains("null"), true)  // Should include null
+  
+  // Test group_by with non-string items
+  let group_result = apply_filter(mixed_arr, "group_by")
+  assert_eq(group_result.to_string().contains("42"), true)  // Should group non-strings
+}
+
+test "helper function coverage" {
+  // Test helper functions to improve coverage
+  let filters = ["upcase", "downcase"]
+  let var_node = variable_node_simple("test", filters)
+  let context = LiquidContext::new()
+  context.set("test", string_value("hello"))
+  
+  let result = render_node(var_node, context)
+  assert_eq(result, "hello")  // Should apply filters
+}
+
+test "size filter edge cases" {
+  // Test size filter with different input types to cover uncovered lines
+  let bool_val = bool_value(true)
+  let null_val = null_value()
+  
+  // Test size with non-string/array/object
+  assert_eq(apply_filter(bool_val, "size").to_string(), "0")
+  assert_eq(apply_filter(null_val, "length").to_string(), "0")
+}
+
+test "filter parameter fallback cases" {
+  // Test filter parameter parsing fallback cases
+  
+  // Test replace without quotes (unquoted parameters)
+  let template1 = parse("{{ text | replace: old, new }}")
+  let context1 = LiquidContext::new()
+  context1.set("text", string_value("This is old text"))
+  let result1 = template1.render(context1)
+  assert_eq(result1, "This is new text")  // Should handle unquoted params
+  
+  // Test remove without quotes
+  let template2 = parse("{{ text | remove: bad }}")
+  let context2 = LiquidContext::new()
+  context2.set("text", string_value("This is bad text"))
+  let result2 = template2.render(context2)
+  assert_eq(result2, "This is  text")  // Should handle unquoted param
+  
+  // Test split without quotes
+  let template3 = parse("{{ text | split: - }}")
+  let context3 = LiquidContext::new()
+  context3.set("text", string_value("apple-banana-cherry"))
+  let result3 = template3.render(context3)
+  assert_eq(result3, "[apple, banana, cherry]")  // Should handle unquoted delimiter
+  
+  // Test split without parameters (default space)
+  let template4 = parse("{{ text | split }}")
+  let context4 = LiquidContext::new()
+  context4.set("text", string_value("apple banana cherry"))
+  let result4 = template4.render(context4)
+  assert_eq(result4, "[apple, banana, cherry]")  // Should use default space delimiter
+}
+
+test "date filter format edge cases" {
+  // Test date filter with different format parameters
+  
+  // Test date with double quotes
+  let template1 = parse("{{ date | date: \"%B %d, %Y\" }}")
+  let context1 = LiquidContext::new()
+  context1.set("date", string_value("2024-01-15"))
+  let result1 = template1.render(context1)
+  assert_eq(result1.contains("2024"), true)  // Should handle double quotes
+  
+  // Test date with unquoted format
+  let template2 = parse("{{ date | date: %m/%d/%Y }}")
+  let context2 = LiquidContext::new()
+  context2.set("date", string_value("2023-12-25"))
+  let result2 = template2.render(context2)
+  assert_eq(result2.contains("2023"), true)  // Should handle unquoted format
+}
+
+test "where filter edge cases" {
+  // Test where filter edge cases
+  
+  // Test where with unquoted parameters
+  let template1 = parse("{{ items | where: category, tech }}")
+  let context1 = LiquidContext::new()
+  let items1 = array_value([string_value("tech-article"), string_value("sports-news")])
+  context1.set("items", items1)
+  let result1 = template1.render(context1)
+  assert_eq(result1, "[tech-article]")  // Should handle unquoted params
+  
+  // Test where with object without matching property
+  let context2 = LiquidContext::new()
+  let obj_without_prop = Map::new()
+  obj_without_prop.set("name", string_value("test"))
+  // No 'category' property
+  let items2 = array_value([object_value(obj_without_prop)])
+  context2.set("items", items2)
+  
+  let where_test = apply_filter_with_params(items2, filter("where", ["'category'", "'tech'"]))
+  assert_eq(where_test.to_string(), "[]")  // Should return empty for no matches
+  
+  // Test where without enough parameters (fallback)
+  let where_fallback = apply_filter_with_params(items1, filter("where", ["only_one_param"]))
+  assert_eq(where_fallback.to_string(), "[]")  // Should fallback to basic where (no matches)
+}
+
+test "money filter trailing zeros edge case" {
+  // Test money filter with trailing zeros
+  let num_with_zeros = number_value(20.0)
+  let result = apply_filter(num_with_zeros, "money_without_trailing_zeros")
+  assert_eq(result.to_string(), "$20")  // Should remove .0
+  
+  // Test with string input
+  let str_input = string_value("25.50")
+  let str_result = apply_filter(str_input, "money_without_trailing_zeros")
+  assert_eq(str_result.to_string(), "$25.50")  // Should handle string input
+}
+
 // Capture Tag Functionality Tests
 test "capture tag basic functionality" {
   // Test capture tag basic functionality
