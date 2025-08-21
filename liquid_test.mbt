@@ -1367,3 +1367,25 @@ test "whitespace control mixed" {
   let result = template.render(context)
   assert_eq(result, "Before Content After")
 }
+
+// Helper function tests to eliminate unused variant warnings
+test "node helper functions" {
+  // Test helper functions for creating nodes (eliminates unused variant warnings)
+  let context = LiquidContext::new()
+  context.set("test_var", bool_value(false))
+  
+  // Test unless_node helper
+  let unless_node_test = unless_node("test_var", [text_node("Content")])
+  let unless_result = render_node(unless_node_test, context)
+  assert_eq(unless_result, "Content")  // Should render since test_var is false
+  
+  // Test case_node helper  
+  let case_node_test = case_node("test_var", [], Some([text_node("Default")]))
+  let case_result = render_node(case_node_test, context)
+  assert_eq(case_result, "Default")  // Should use else body
+  
+  // Test if_node helper
+  let if_node_test = if_node("test_var", [text_node("True")], Some([text_node("False")]))
+  let if_result = render_node(if_node_test, context)
+  assert_eq(if_result, "False")  // Should render else body since test_var is false
+}

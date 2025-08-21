@@ -1,2 +1,0 @@
-- [ ] remove source field in [](./moon.mod.json) and lift code from src to root
-- [ ] rename README.md to README.mbt.md, this file is type checked by `moon check` fix the diagnostics errors, and symlink README.md to README.mbt.md

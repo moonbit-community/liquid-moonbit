@@ -135,11 +135,11 @@ pub enum LiquidNode {
   Comment(String)  // comment content
 }
 
-// Whitespace control flags
-pub struct WhitespaceControl {
-  strip_left : Bool
-  strip_right : Bool
-}
+// Whitespace control flags (for future implementation)
+// pub struct WhitespaceControl {
+//   strip_left : Bool
+//   strip_right : Bool
+// }
 
 // Simple template parser
 pub struct LiquidTemplate {
@@ -165,8 +165,9 @@ fn parse_template(template : String) -> Array[LiquidNode] {
     let remaining = template.substring(start=current)
     let variable_tag = remaining.find("{{")
     let logic_tag = remaining.find("{%")
-    let variable_tag_strip = remaining.find("{{-")
-    let logic_tag_strip = remaining.find("{%-")
+    // Future: whitespace control detection
+    // let variable_tag_strip = remaining.find("{{-")
+    // let logic_tag_strip = remaining.find("{%-")
     
     // Determine which tag comes first
     let (tag_start, tag_type) = match (variable_tag, logic_tag) {
@@ -1001,4 +1002,12 @@ pub fn for_node(loop_var : String, collection : String, body : Array[LiquidNode]
 
 pub fn if_node(condition : String, then_body : Array[LiquidNode], else_body : Array[LiquidNode]?) -> LiquidNode {
   If(condition, then_body, else_body)
+}
+
+pub fn unless_node(condition : String, body : Array[LiquidNode]) -> LiquidNode {
+  Unless(condition, body)
+}
+
+pub fn case_node(expression : String, when_branches : Array[(String, Array[LiquidNode])], else_body : Array[LiquidNode]?) -> LiquidNode {
+  Case(expression, when_branches, else_body)
 }
