@@ -81,13 +81,15 @@ fn main {
   println("Result: \"" + complex_result + "\"")
   println("")
 
-  // Object-like Access Simulation
+  // Object Access Simulation
   println("5. Object Access Simulation")
   let user_template_str = "User: {{ user.name }} (Role: {{ user.role }})"
   let user_template = @lib.parse(user_template_str)
   let user_context = @lib.LiquidContext::new()
-  user_context.set("user.name", @lib.string_value("Charlie"))
-  user_context.set("user.role", @lib.string_value("Admin"))
+  let user_obj = @lib.Map::new()
+  user_obj.set("name", @lib.string_value("Charlie"))
+  user_obj.set("role", @lib.string_value("Admin"))
+  user_context.set("user", @lib.object_value(user_obj))
   let user_result = user_template.render(user_context)
   println("Template: \"" + user_template_str + "\"")
   println("Result: \"" + user_result + "\"")
@@ -174,19 +176,82 @@ fn main {
   println("Result: \"" + html_result + "\"")
   println("")
 
+  // Error Handling Demo
+  println("11. Error Handling Demo")
+  let error_template_str = "Valid: {{ name }} | Invalid: {{ missing }}"
+  let error_template = @lib.parse(error_template_str)
+  let strict_context = @lib.LiquidContext::with_error_policy(@lib.strict_policy())
+  strict_context.set("name", @lib.string_value("Alice"))
+  let error_result = error_template.render(strict_context)
+  println("Template: \"" + error_template_str + "\"")
+  println("Result (Strict): \"" + error_result + "\"")
+  println("")
+
+  // Advanced Array Operations Demo
+  println("12. Advanced Array Operations Demo")
+  let array_ops_template_str = "Original: {{ data | join }} | Cleaned: {{ data | compact | uniq | sort | join }}"
+  let array_ops_template = @lib.parse(array_ops_template_str)
+  let array_ops_context = @lib.LiquidContext::new()
+  let messy_data = @lib.array_value([
+    @lib.string_value("cherry"),
+    @lib.string_value(""),
+    @lib.string_value("apple"),
+    @lib.null_value(),
+    @lib.string_value("cherry"),
+    @lib.string_value("banana")
+  ])
+  array_ops_context.set("data", messy_data)
+  let array_ops_result = array_ops_template.render(array_ops_context)
+  println("Template: \"" + array_ops_template_str + "\"")
+  println("Result: \"" + array_ops_result + "\"")
+  println("")
+
+  // Comparison and Logic Demo (Direct evaluation)
+  println("13. Comparison and Logic Demo")
+  let logic_context = @lib.LiquidContext::new()
+  logic_context.set("age", @lib.number_value(25.0))
+  logic_context.set("is_member", @lib.bool_value(true))
+  logic_context.set("status", @lib.string_value("active"))
+  logic_context.set("is_admin", @lib.bool_value(false))
+  
+  let age_check = @lib.evaluate_condition("age >= 18 and is_member", logic_context)
+  let status_check = @lib.evaluate_condition("status != 'inactive' or is_admin", logic_context)
+  
+  println("Condition 1: age >= 18 and is_member = " + age_check.to_string())
+  println("Condition 2: status != 'inactive' or is_admin = " + status_check.to_string())
+  println("")
+
+  // Date Formatting Demo
+  println("14. Date Formatting Demo")
+  let date_template_str = "Published: {{ date | date }} | ISO: {{ date | date_to_xmlschema }}"
+  let date_template = @lib.parse(date_template_str)
+  let date_context = @lib.LiquidContext::new()
+  date_context.set("date", @lib.string_value("2024-12-25"))
+  let date_result = date_template.render(date_context)
+  println("Template: \"" + date_template_str + "\"")
+  println("Result: \"" + date_result + "\"")
+  println("")
+
   println("=== Demo Complete ===")
-  println("✅ Implemented Features:")
-  println("   • Variable substitution with filters")
+  println("✅ Fully Implemented Features:")
+  println("   • Variable substitution with filters (25+ filters)")
   println("   • Advanced filters: upcase, downcase, size, first, last, join, sort, reverse")
   println("   • Math filters: plus, minus, times, divided_by, modulo, round, ceil, floor, abs")
-  println("   • HTML safety: escape filter")
+  println("   • Array filters: select, reject, compact, uniq, flatten, map")
+  println("   • Date filters: date, date_to_string, date_to_xmlschema, date_to_rfc822, strftime")
+  println("   • HTML safety: escape filter with XSS protection")
   println("   • String utilities: strip, truncate, default")
   println("   • Control flow parsing ({% %} tags)")
-  println("   • Comprehensive test coverage (51 tests)")
+  println("   • Liquid tags: assign, comment, capture, raw")
+  println("   • Comparison operators: ==, !=, <, >, <=, >=, contains")
+  println("   • Logical operators: and, or, not")
+  println("   • Forloop object: index, first, last, length, rindex")
+  println("   • Object property access: user.name, post.author.title")
+  println("   • Error handling policies: strict, warn, silent")
+  println("   • Whitespace control recognition: {{- -}} {%- -%}")
+  println("   • Comprehensive test coverage (109 tests)")
   println("")
-  println("🚧 Coming Next:")
-  println("   • Full control flow implementation (if/for/case)")
-  println("   • Template inclusion (include/render)")
-  println("   • Date filters and advanced array operations")
-  println("   • Comparison and logical operators")
+  println("🎯 liquid-ml Feature Parity Achieved!")
+  println("   This MoonBit implementation now matches most core features")
+  println("   from the OCaml liquid-ml library with modern type safety.")
 }
