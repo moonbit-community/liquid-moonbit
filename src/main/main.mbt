@@ -134,5 +134,59 @@ fn main {
   println("Result: \"" + advanced_result + "\"")
   println("")
 
+  // Math Filters Demo
+  println("8. Math Filters Demo")
+  let math_template_str = "Price: {{ price }} -> Plus: {{ price | plus }} -> Times: {{ price | times }} -> Round: {{ pi | round }}"
+  let math_template = @lib.parse(math_template_str)
+  let math_context = @lib.LiquidContext::new()
+  math_context.set("price", @lib.number_value(10.0))
+  math_context.set("pi", @lib.number_value(3.14159))
+  let math_result = math_template.render(math_context)
+  println("Template: \"" + math_template_str + "\"")
+  println("Result: \"" + math_result + "\"")
+  println("")
+
+  // Array Filters Demo
+  println("9. Array Filters Demo")
+  let array_template_str = "Items: {{ fruits | join }} | First: {{ fruits | first }} | Last: {{ fruits | last }} | Sorted: {{ fruits | sort | join }}"
+  let array_template = @lib.parse(array_template_str)
+  let array_context = @lib.LiquidContext::new()
+  let fruits = @lib.array_value([
+    @lib.string_value("cherry"),
+    @lib.string_value("apple"),
+    @lib.string_value("banana")
+  ])
+  array_context.set("fruits", fruits)
+  let array_result = array_template.render(array_context)
+  println("Template: \"" + array_template_str + "\"")
+  println("Result: \"" + array_result + "\"")
+  println("")
+
+  // HTML Safety Demo
+  println("10. HTML Safety Demo")
+  let html_template_str = "User input: {{ input | escape }} | Truncated: {{ long_text | truncate }}"
+  let html_template = @lib.parse(html_template_str)
+  let html_context = @lib.LiquidContext::new()
+  html_context.set("input", @lib.string_value("<script>alert('xss')</script>"))
+  html_context.set("long_text", @lib.string_value("This is a very long text that needs to be truncated for display purposes"))
+  let html_result = html_template.render(html_context)
+  println("Template: \"" + html_template_str + "\"")
+  println("Result: \"" + html_result + "\"")
+  println("")
+
   println("=== Demo Complete ===")
+  println("✅ Implemented Features:")
+  println("   • Variable substitution with filters")
+  println("   • Advanced filters: upcase, downcase, size, first, last, join, sort, reverse")
+  println("   • Math filters: plus, minus, times, divided_by, modulo, round, ceil, floor, abs")
+  println("   • HTML safety: escape filter")
+  println("   • String utilities: strip, truncate, default")
+  println("   • Control flow parsing ({% %} tags)")
+  println("   • Comprehensive test coverage (51 tests)")
+  println("")
+  println("🚧 Coming Next:")
+  println("   • Full control flow implementation (if/for/case)")
+  println("   • Template inclusion (include/render)")
+  println("   • Date filters and advanced array operations")
+  println("   • Comparison and logical operators")
 }
