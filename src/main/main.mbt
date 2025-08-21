@@ -86,7 +86,7 @@ fn main {
   let user_template_str = "User: {{ user.name }} (Role: {{ user.role }})"
   let user_template = @lib.parse(user_template_str)
   let user_context = @lib.LiquidContext::new()
-  let user_obj = @lib.Map::new()
+  let user_obj = Map::new()
   user_obj.set("name", @lib.string_value("Charlie"))
   user_obj.set("role", @lib.string_value("Admin"))
   user_context.set("user", @lib.object_value(user_obj))
