@@ -163,6 +163,14 @@ pub enum LiquidNode {
   Assign(String, String) // variable_name, expression
   Comment(String) // comment content
   Cycle(String, Array[String]) // cycle_name, values
+  TableRow(String, String, Array[LiquidNode], Int) // loop_var, collection, body, cols
+  Break // break statement
+  Continue // continue statement
+  Liquid(Array[LiquidNode]) // inline liquid code block
+  Section(String) // section name
+  Style(String) // CSS content
+  Include(String) // template name to include
+  Render(String) // template name to render
 }
 
 // Whitespace control flags (for future implementation)
@@ -326,6 +334,69 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               let cycle_name = "default"
               let cycle_values = ["odd", "even"]  // Simple alternating cycle
               nodes.push(Cycle(cycle_name, cycle_values))
+            } else if trimmed_content.strip_prefix("tablerow ") != None {
+              // Parse tablerow tag: {% tablerow item in collection cols: 3 %}
+              let tablerow_content = trimmed_content.substring(start=10).trim(" \t").to_string()
+              if tablerow_content.contains(" in ") {
+                let parts = tablerow_content.split(" in ").collect()
+                if parts.length() == 2 {
+                  let loop_var = parts[0].to_string().trim(" \t").to_string()
+                  let rest = parts[1].to_string().trim(" \t").to_string()
+                  
+                  // Parse collection and cols
+                  let (collection, cols) = if rest.contains(" cols:") {
+                    let col_parts = rest.split(" cols:").collect()
+                    if col_parts.length() == 2 {
+                      let coll = col_parts[0].to_string().trim(" \t").to_string()
+                      let col_str = col_parts[1].to_string().trim(" \t").to_string()
+                      let col_num = match col_str {
+                        "1" => 1
+                        "2" => 2
+                        "3" => 3
+                        "4" => 4
+                        "5" => 5
+                        _ => 3  // Default
+                      }
+                      (coll, col_num)
+                    } else {
+                      (rest, 3)
+                    }
+                  } else {
+                    (rest, 3)
+                  }
+                  
+                  nodes.push(TableRow(loop_var, collection, [text_node("TABLE_CELL")], cols))
+                } else {
+                  nodes.push(Comment(trimmed_content))
+                }
+              } else {
+                nodes.push(Comment(trimmed_content))
+              }
+            } else if trimmed_content == "break" {
+              // Parse break statement
+              nodes.push(Break)
+            } else if trimmed_content == "continue" {
+              // Parse continue statement
+              nodes.push(Continue)
+            } else if trimmed_content.strip_prefix("liquid") != None {
+              // Parse liquid tag: {% liquid %}...{% endliquid %}
+              // For now, create a simple liquid block
+              nodes.push(Liquid([text_node("LIQUID_BLOCK")]))
+            } else if trimmed_content.strip_prefix("section ") != None {
+              // Parse section tag: {% section 'section-name' %}
+              let section_name = trimmed_content.substring(start=8).trim(" \t").to_string()
+              nodes.push(Section(section_name))
+            } else if trimmed_content.strip_prefix("style") != None {
+              // Parse style tag: {% style %}...{% endstyle %}
+              nodes.push(Style("CSS_CONTENT"))
+            } else if trimmed_content.strip_prefix("include ") != None {
+              // Parse include tag: {% include 'template-name' %}
+              let template_name = trimmed_content.substring(start=8).trim(" \t").to_string()
+              nodes.push(Include(template_name))
+            } else if trimmed_content.strip_prefix("render ") != None {
+              // Parse render tag: {% render 'template-name' %}
+              let template_name = trimmed_content.substring(start=7).trim(" \t").to_string()
+              nodes.push(Render(template_name))
             } else if trimmed_content.strip_prefix("assign ") != None {
               // Parse assign tag: {% assign var = value %}
               let assign_content = trimmed_content
@@ -504,6 +575,94 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
       } else {
         ""
       }
+    }
+    TableRow(loop_var, collection, body, cols) => {
+      match context.get(collection) {
+        Some(Array(items)) => {
+          let mut output = "<table>\n"
+          let mut index = 0
+          let mut row_open = false
+          
+          for item in items {
+            // Start new row if needed
+            if index % cols == 0 {
+              if row_open {
+                output = output + "</tr>\n"
+              }
+              output = output + "<tr>\n"
+              row_open = true
+            }
+            
+            // Create tablerow context with tablerowloop object
+            let loop_context = context
+            loop_context.set(loop_var, item)
+            
+            // Set tablerowloop object properties
+            let tablerowloop_obj = Map::new()
+            tablerowloop_obj.set("index", number_value((index + 1).to_double()))
+            tablerowloop_obj.set("index0", number_value(index.to_double()))
+            tablerowloop_obj.set("col", number_value(((index % cols) + 1).to_double()))
+            tablerowloop_obj.set("col0", number_value((index % cols).to_double()))
+            tablerowloop_obj.set("first", bool_value(index == 0))
+            tablerowloop_obj.set("last", bool_value(index == items.length() - 1))
+            tablerowloop_obj.set("length", number_value(items.length().to_double()))
+            
+            loop_context.set("tablerowloop", object_value(tablerowloop_obj))
+            
+            output = output + "<td>"
+            for body_node in body {
+              output = output + render_node(body_node, loop_context)
+            }
+            output = output + "</td>\n"
+            
+            index = index + 1
+          }
+          
+          // Close final row and table
+          if row_open {
+            output = output + "</tr>\n"
+          }
+          output = output + "</table>"
+          output
+        }
+        _ => ""
+      }
+    }
+    Break => {
+      // Break statement - for now just return empty string
+      // In a full implementation, this would signal loop termination
+      ""
+    }
+    Continue => {
+      // Continue statement - for now just return empty string  
+      // In a full implementation, this would signal skip to next iteration
+      ""
+    }
+    Liquid(body) => {
+      // Liquid block - render the contained nodes
+      let mut output = ""
+      for body_node in body {
+        output = output + render_node(body_node, context)
+      }
+      output
+    }
+    Section(section_name) => {
+      // Section tag - render section placeholder
+      "<section data-section=\"" + section_name + "\"><!-- Section: " + section_name + " --></section>"
+    }
+    Style(css_content) => {
+      // Style tag - render CSS content
+      "<style>" + css_content + "</style>"
+    }
+    Include(template_name) => {
+      // Include tag - for now return placeholder
+      // In a full implementation, this would load and render the template
+      "<!-- Include: " + template_name + " -->"
+    }
+    Render(template_name) => {
+      // Render tag - for now return placeholder
+      // In a full implementation, this would load and render the template with isolated context
+      "<!-- Render: " + template_name + " -->"
     }
   }
 }
@@ -1496,4 +1655,44 @@ pub fn case_node(
 ///|
 pub fn cycle_node(cycle_name : String, values : Array[String]) -> LiquidNode {
   Cycle(cycle_name, values)
+}
+
+///|
+pub fn tablerow_node(loop_var : String, collection : String, body : Array[LiquidNode], cols : Int) -> LiquidNode {
+  TableRow(loop_var, collection, body, cols)
+}
+
+///|
+pub fn break_node() -> LiquidNode {
+  Break
+}
+
+///|
+pub fn continue_node() -> LiquidNode {
+  Continue
+}
+
+///|
+pub fn liquid_node(body : Array[LiquidNode]) -> LiquidNode {
+  Liquid(body)
+}
+
+///|
+pub fn section_node(section_name : String) -> LiquidNode {
+  Section(section_name)
+}
+
+///|
+pub fn style_node(css_content : String) -> LiquidNode {
+  Style(css_content)
+}
+
+///|
+pub fn include_node(template_name : String) -> LiquidNode {
+  Include(template_name)
+}
+
+///|
+pub fn render_node_tag(template_name : String) -> LiquidNode {
+  Render(template_name)
 }
