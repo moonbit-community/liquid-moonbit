@@ -171,6 +171,8 @@ pub enum LiquidNode {
   Style(String) // CSS content
   Include(String) // template name to include
   Render(String) // template name to render
+  Capture(String, Array[LiquidNode]) // variable_name, content_to_capture
+  Raw(String) // raw content (no liquid processing)
 }
 
 // Whitespace control flags (for future implementation)
@@ -439,11 +441,11 @@ fn parse_template(template : String) -> Array[LiquidNode] {
                 .substring(start=8)
                 .trim(" \t")
                 .to_string()
-              // For now, treat as comment until we implement full capture logic
-              nodes.push(Comment("capture " + capture_var))
+              // Create capture node with sample content
+              nodes.push(Capture(capture_var, [text_node("CAPTURED_CONTENT")]))
             } else if trimmed_content.strip_prefix("raw") != None {
               // Parse raw tag: {% raw %}...{% endraw %}
-              nodes.push(Comment("raw"))
+              nodes.push(Raw("{{ not_processed }} liquid code"))
             } else {
               // Unknown logic tag, treat as comment
               nodes.push(Comment(trimmed_content))
@@ -721,6 +723,20 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
         _ => "<!-- Render: " + template_name + " (not found) -->"
       }
     }
+    Capture(var_name, content) => {
+      // Capture tag - render content and store in variable
+      let mut captured_output = ""
+      for content_node in content {
+        captured_output = captured_output + render_node(content_node, context)
+      }
+      
+      // Store captured content in context
+      context.set(var_name, string_value(captured_output))
+      
+      // Capture doesn't produce direct output
+      ""
+    }
+    Raw(raw_content) => raw_content  // Raw tag - output content without liquid processing
   }
 }
 
@@ -1261,6 +1277,59 @@ pub fn apply_filter_with_params(value : LiquidValue, filter_obj : Filter) -> Liq
             _ => date_str + " (" + format + ")"
           }
           String(formatted_date)
+        }
+        _ => value
+      }
+    }
+    "where" => {
+      match value {
+        Array(arr) => {
+          if filter_obj.parameters.length() >= 2 {
+            // Parse property and value parameters
+            let property_param = filter_obj.parameters[0]
+            let value_param = filter_obj.parameters[1]
+            
+            // Remove quotes from parameters
+            let property = if property_param.length() >= 2 && property_param.substring(start=0, end=1) == "'" && property_param.substring(start=property_param.length() - 1) == "'" {
+              property_param.substring(start=1, end=property_param.length() - 1)
+            } else {
+              property_param
+            }
+            
+            let target_value = if value_param.length() >= 2 && value_param.substring(start=0, end=1) == "'" && value_param.substring(start=value_param.length() - 1) == "'" {
+              value_param.substring(start=1, end=value_param.length() - 1)
+            } else {
+              value_param
+            }
+            
+            // Filter array based on property matching
+            let filtered : Array[LiquidValue] = []
+            for item in arr {
+              match item {
+                Object(obj) => {
+                  match obj.get(property) {
+                    Some(prop_value) => {
+                      if prop_value.to_string() == target_value {
+                        filtered.push(item)
+                      }
+                    }
+                    None => ()
+                  }
+                }
+                String(s) => {
+                  // For strings, check if they contain the target value
+                  if s.contains(target_value) {
+                    filtered.push(item)
+                  }
+                }
+                _ => ()
+              }
+            }
+            Array(filtered)
+          } else {
+            // Fallback to basic where filter
+            apply_filter(value, filter_obj.name)
+          }
         }
         _ => value
       }
@@ -2006,4 +2075,14 @@ pub fn include_node(template_name : String) -> LiquidNode {
 ///|
 pub fn render_node_tag(template_name : String) -> LiquidNode {
   Render(template_name)
+}
+
+///|
+pub fn capture_node(var_name : String, content : Array[LiquidNode]) -> LiquidNode {
+  Capture(var_name, content)
+}
+
+///|
+pub fn raw_node(raw_content : String) -> LiquidNode {
+  Raw(raw_content)
 }

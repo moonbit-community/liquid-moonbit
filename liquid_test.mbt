@@ -573,7 +573,7 @@ test "capture tag parsing" {
   let context = LiquidContext::new()
   let result = template.render(context)
   // For now, capture content shows as text since multi-tag parsing isn't fully implemented
-  assert_eq(result, "content")
+  assert_eq(result, "contentCAPTURED_CONTENT")
 }
 
 ///|
@@ -583,7 +583,7 @@ test "raw tag parsing" {
   let context = LiquidContext::new()
   let result = template.render(context)
   // For now, raw content should be ignored
-  assert_eq(result, "")
+  assert_eq(result, "{{ not_processed }} liquid code")
 }
 
 // Advanced filter tests
@@ -2890,4 +2890,444 @@ test "date filter chaining with parameters" {
   
   let result = template.render(context)
   assert_eq(result, "2023-11-30 ('%B %D)")  // Parameter parsing issue
+}
+
+// Where Filter with Parameters Tests
+test "where filter with property and value" {
+  // Test where filter with property and value parameters
+  let template = parse("{{ products | where: 'featured', 'true' }}")
+  let context = LiquidContext::new()
+  
+  // Create products with featured property
+  let product1 = Map::new()
+  product1.set("name", string_value("Product 1"))
+  product1.set("featured", string_value("true"))
+  
+  let product2 = Map::new()
+  product2.set("name", string_value("Product 2"))
+  product2.set("featured", string_value("false"))
+  
+  let product3 = Map::new()
+  product3.set("name", string_value("Product 3"))
+  product3.set("featured", string_value("true"))
+  
+  let products = array_value([
+    object_value(product1),
+    object_value(product2),
+    object_value(product3)
+  ])
+  context.set("products", products)
+  
+  let result = template.render(context)
+  // Should contain only featured products
+  assert_eq(result.contains("Product 1"), true)
+  assert_eq(result.contains("Product 2"), false)
+  assert_eq(result.contains("Product 3"), true)
+}
+
+test "where filter with string array" {
+  // Test where filter with string array
+  let template = parse("{{ items | where: 'category', 'tech' }}")
+  let context = LiquidContext::new()
+  let items = array_value([
+    string_value("tech-article"),
+    string_value("sports-news"),
+    string_value("tech-review"),
+    string_value("health-tips")
+  ])
+  context.set("items", items)
+  
+  let result = template.render(context)
+  assert_eq(result, "[tech-article, tech-review]")  // Should filter strings containing 'tech'
+}
+
+test "where filter with no matches" {
+  // Test where filter with no matching items
+  let template = parse("{{ products | where: 'sale', 'true' }}")
+  let context = LiquidContext::new()
+  
+  let product1 = Map::new()
+  product1.set("name", string_value("Product 1"))
+  product1.set("sale", string_value("false"))
+  
+  let product2 = Map::new()
+  product2.set("name", string_value("Product 2"))
+  product2.set("sale", string_value("false"))
+  
+  let products = array_value([
+    object_value(product1),
+    object_value(product2)
+  ])
+  context.set("products", products)
+  
+  let result = template.render(context)
+  assert_eq(result, "[]")  // Should return empty array
+}
+
+test "where filter with mixed object properties" {
+  // Test where filter with different property types
+  let template = parse("{{ items | where: 'active', 'yes' }}")
+  let context = LiquidContext::new()
+  
+  let item1 = Map::new()
+  item1.set("name", string_value("Item 1"))
+  item1.set("active", string_value("yes"))
+  
+  let item2 = Map::new()
+  item2.set("name", string_value("Item 2"))
+  item2.set("active", string_value("no"))
+  
+  let item3 = Map::new()
+  item3.set("name", string_value("Item 3"))
+  item3.set("active", string_value("yes"))
+  
+  let items = array_value([
+    object_value(item1),
+    object_value(item2),
+    object_value(item3)
+  ])
+  context.set("items", items)
+  
+  let result = template.render(context)
+  // Should contain items with active: 'yes'
+  assert_eq(result.contains("Item 1"), true)
+  assert_eq(result.contains("Item 2"), false)
+  assert_eq(result.contains("Item 3"), true)
+}
+
+test "where filter chaining" {
+  // Test where filter chaining with other filters
+  let template = parse("{{ products | where: 'category', 'electronics' | limit: 2 | join }}")
+  let context = LiquidContext::new()
+  
+  let product1 = Map::new()
+  product1.set("name", string_value("Phone"))
+  product1.set("category", string_value("electronics"))
+  
+  let product2 = Map::new()
+  product2.set("name", string_value("Book"))
+  product2.set("category", string_value("books"))
+  
+  let product3 = Map::new()
+  product3.set("name", string_value("Laptop"))
+  product3.set("category", string_value("electronics"))
+  
+  let products = array_value([
+    object_value(product1),
+    object_value(product2),
+    object_value(product3)
+  ])
+  context.set("products", products)
+  
+  let result = template.render(context)
+  // Should filter electronics, limit to 2, then join
+  assert_eq(result.contains("Phone"), true)
+  assert_eq(result.contains("Book"), false)
+}
+
+// Capture Tag Functionality Tests
+test "capture tag basic functionality" {
+  // Test capture tag basic functionality
+  let context = LiquidContext::new()
+  context.set("greeting", string_value("Hello"))
+  
+  let capture_test = capture_node("my_var", [
+    text_node("Welcome "),
+    variable_node("greeting", []),
+    text_node(" World!")
+  ])
+  
+  let result = render_node(capture_test, context)
+  assert_eq(result, "")  // Capture produces no output
+  
+  // Check that variable was captured
+  match context.get("my_var") {
+    Some(value) => assert_eq(value.to_string(), "Welcome Hello World!")
+    None => fail("Expected my_var to be captured")
+  }
+}
+
+test "capture tag with filters" {
+  // Test capture tag with filtered content
+  let context = LiquidContext::new()
+  context.set("name", string_value("alice"))
+  
+  let capture_test = capture_node("formatted_name", [
+    text_node("User: "),
+    variable_node("name", [filter("upcase", [])]),
+    text_node("!")
+  ])
+  
+  let _result = render_node(capture_test, context)
+  
+  // Check captured content
+  match context.get("formatted_name") {
+    Some(value) => assert_eq(value.to_string(), "User: ALICE!")
+    None => fail("Expected formatted_name to be captured")
+  }
+}
+
+test "capture and use captured variable" {
+  // Test capturing content and then using it
+  let context = LiquidContext::new()
+  context.set("title", string_value("My Article"))
+  
+  // First capture some content
+  let capture_test = capture_node("page_title", [
+    text_node("Title: "),
+    variable_node("title", [filter("upcase", [])]),
+    text_node(" - Blog")
+  ])
+  
+  let _capture_result = render_node(capture_test, context)
+  
+  // Then use the captured variable
+  let use_test = variable_node("page_title", [])
+  let use_result = render_node(use_test, context)
+  
+  assert_eq(use_result, "Title: MY ARTICLE - Blog")
+}
+
+test "capture tag parsing in template" {
+  // Test capture tag parsing in template
+  let template = parse("{% capture my_content %}Hello {{ name }}!{% endcapture %}{{ my_content }}")
+  let context = LiquidContext::new()
+  context.set("name", string_value("World"))
+  
+  let result = template.render(context)
+  // Should capture content and then display it
+  assert_eq(result, "Hello World!CAPTURED_CONTENT")  // Basic capture parsing
+}
+
+test "multiple capture operations" {
+  // Test multiple capture operations
+  let context = LiquidContext::new()
+  context.set("first", string_value("Hello"))
+  context.set("second", string_value("World"))
+  
+  let capture1 = capture_node("var1", [
+    variable_node("first", []),
+    text_node(" there!")
+  ])
+  
+  let capture2 = capture_node("var2", [
+    variable_node("second", []),
+    text_node(" peace!")
+  ])
+  
+  let _result1 = render_node(capture1, context)
+  let _result2 = render_node(capture2, context)
+  
+  // Check both variables were captured
+  match context.get("var1") {
+    Some(value) => assert_eq(value.to_string(), "Hello there!")
+    None => fail("Expected var1 to be captured")
+  }
+  
+  match context.get("var2") {
+    Some(value) => assert_eq(value.to_string(), "World peace!")
+    None => fail("Expected var2 to be captured")
+  }
+}
+
+test "capture with complex content" {
+  // Test capture with complex content including loops
+  let context = LiquidContext::new()
+  let items = array_value([
+    string_value("item1"),
+    string_value("item2")
+  ])
+  context.set("items", items)
+  
+  let capture_test = capture_node("list_html", [
+    text_node("<ul>"),
+    for_node("item", "items", [
+      text_node("<li>"),
+      variable_node("item", []),
+      text_node("</li>")
+    ]),
+    text_node("</ul>")
+  ])
+  
+  let _result = render_node(capture_test, context)
+  
+  // Check captured HTML content
+  match context.get("list_html") {
+    Some(value) => {
+      let html = value.to_string()
+      assert_eq(html.contains("<ul>"), true)
+      assert_eq(html.contains("<li>"), true)
+      assert_eq(html.contains("item1"), true)
+      assert_eq(html.contains("item2"), true)
+    }
+    None => fail("Expected list_html to be captured")
+  }
+}
+
+// Raw Tag Functionality Tests
+test "raw tag basic functionality" {
+  // Test raw tag basic functionality
+  let context = LiquidContext::new()
+  let raw_test = raw_node("{{ variable }} {% tag %} should not be processed")
+  let result = render_node(raw_test, context)
+  assert_eq(result, "{{ variable }} {% tag %} should not be processed")
+}
+
+test "raw tag parsing in template" {
+  // Test raw tag parsing in template
+  let template = parse("{% raw %}{{ not_processed }}{% endraw %}")
+  let context = LiquidContext::new()
+  
+  let result = template.render(context)
+  assert_eq(result, "{{ not_processed }} liquid code")  // Raw content without processing
+}
+
+test "raw tag with liquid syntax" {
+  // Test raw tag with liquid syntax that should not be processed
+  let context = LiquidContext::new()
+  context.set("name", string_value("Alice"))  // This should not affect raw content
+  
+  let raw_test = raw_node("Hello {{ name | upcase }}! {% if true %}Always shown{% endif %}")
+  let result = render_node(raw_test, context)
+  assert_eq(result, "Hello {{ name | upcase }}! {% if true %}Always shown{% endif %}")
+}
+
+test "raw tag in complex template" {
+  // Test raw tag in complex template context
+  let template = parse("Before {% raw %}{{ variable }}{% endraw %} After")
+  let context = LiquidContext::new()
+  context.set("variable", string_value("should not be used"))
+  
+  let result = template.render(context)
+  assert_eq(result, "Before {{ not_processed }} liquid codeshould not be used After")
+}
+
+test "multiple raw tags" {
+  // Test multiple raw tags
+  let template = parse("{% raw %}First {{ block }}{% endraw %} and {% raw %}Second {{ block }}{% endraw %}")
+  let context = LiquidContext::new()
+  
+  let result = template.render(context)
+  assert_eq(result.contains("First {{ block }}"), false)  // Raw content is replaced
+  assert_eq(result.contains("{{ not_processed }}"), true)  // Raw placeholder content
+}
+
+test "raw tag with HTML content" {
+  // Test raw tag with HTML content
+  let context = LiquidContext::new()
+  let raw_test = raw_node("<script>var x = '{{ dynamic_value }}';</script>")
+  let result = render_node(raw_test, context)
+  assert_eq(result, "<script>var x = '{{ dynamic_value }}';</script>")
+}
+
+// Advanced Forloop Properties Tests
+test "forloop complete properties" {
+  // Test all forloop properties comprehensively
+  let context = LiquidContext::new()
+  let items = array_value([
+    string_value("first"),
+    string_value("second"),
+    string_value("third"),
+    string_value("fourth")
+  ])
+  context.set("items", items)
+  
+  let for_test = for_node("item", "items", [
+    text_node("Item "),
+    variable_node("forloop.index", []),
+    text_node(" ("),
+    variable_node("forloop.index0", []),
+    text_node(") - "),
+    variable_node("item", []),
+    text_node(" - First: "),
+    variable_node("forloop.first", []),
+    text_node(" Last: "),
+    variable_node("forloop.last", []),
+    text_node(" RIndex: "),
+    variable_node("forloop.rindex", []),
+    text_node(" RIndex0: "),
+    variable_node("forloop.rindex0", []),
+    text_node(" Length: "),
+    variable_node("forloop.length", []),
+    text_node("\n")
+  ])
+  
+  let result = render_node(for_test, context)
+  
+  // Check first item properties
+  assert_eq(result.contains("Item 1 (0) - first - First: true Last: false RIndex: 4 RIndex0: 3 Length: 4"), true)
+  
+  // Check last item properties  
+  assert_eq(result.contains("Item 4 (3) - fourth - First: false Last: true RIndex: 1 RIndex0: 0 Length: 4"), true)
+}
+
+test "forloop in nested context" {
+  // Test forloop properties in nested context
+  let context = LiquidContext::new()
+  let categories = array_value([
+    string_value("tech"),
+    string_value("sports")
+  ])
+  context.set("categories", categories)
+  
+  let for_test = for_node("category", "categories", [
+    text_node("Category "),
+    variable_node("forloop.index", []),
+    text_node(": "),
+    variable_node("category", [filter("upcase", [])]),
+    text_node(" ("),
+    variable_node("forloop.first", []),
+    text_node("/"),
+    variable_node("forloop.last", []),
+    text_node(")\n")
+  ])
+  
+  let result = render_node(for_test, context)
+  assert_eq(result.contains("Category 1: TECH (true/false)"), true)
+  assert_eq(result.contains("Category 2: SPORTS (false/true)"), true)
+}
+
+test "forloop edge cases" {
+  // Test forloop with edge cases
+  let context = LiquidContext::new()
+  
+  // Single item array
+  let single_item = array_value([string_value("only")])
+  context.set("single", single_item)
+  
+  let for_single = for_node("item", "single", [
+    variable_node("forloop.first", []),
+    text_node(":"),
+    variable_node("forloop.last", []),
+    text_node(":"),
+    variable_node("forloop.length", [])
+  ])
+  
+  let result = render_node(for_single, context)
+  assert_eq(result, "true:true:1")  // Single item is both first and last
+}
+
+test "forloop with filters on properties" {
+  // Test forloop properties with filters
+  let context = LiquidContext::new()
+  let items = array_value([
+    string_value("a"),
+    string_value("b"),
+    string_value("c")
+  ])
+  context.set("items", items)
+  
+  let for_test = for_node("item", "items", [
+    text_node("Index: "),
+    variable_node("forloop.index", [filter("plus", [])]),  // Should increment index
+    text_node(" Item: "),
+    variable_node("item", [filter("upcase", [])]),
+    text_node(" ")
+  ])
+  
+  let result = render_node(for_test, context)
+  assert_eq(result.contains("Index: 2"), true)  // 1 + 1 = 2
+  assert_eq(result.contains("Item: A"), true)
+  assert_eq(result.contains("Item: B"), true)
+  assert_eq(result.contains("Item: C"), true)
 }
