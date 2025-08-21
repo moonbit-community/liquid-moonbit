@@ -1,0 +1,33 @@
+---
+title: "Filter Examples"
+description: "Demonstrates various Liquid filters"
+---
+
+# Filter Examples
+
+## String Filters
+Original: {{ text }}
+Uppercase: {{ text | upcase }}
+Lowercase: {{ text | downcase }}
+Capitalized: {{ text | capitalize }}
+Stripped: "{{ text | strip }}"
+Size: {{ text | size }}
+
+## Array Filters
+Items: {{ items | join: ", " }}
+First: {{ items | first }}
+Last: {{ items | last }}
+Reversed: {{ items | reverse | join: ", " }}
+Sorted: {{ items | sort | join: ", " }}
+
+## Number Filters
+{{ price | money }}
+{{ count | pluralize: "item", "items" }}
+
+## Date Filters
+{{ date | date: "%Y-%m-%d" }}
+{{ date | date: "%B %d, %Y" }}
+
+## Default and Fallback
+{{ empty_var | default: "No value provided" }}
+{{ nil_var | default: "Default value" }}

@@ -1,0 +1,67 @@
+---
+title: "Control Flow Examples"
+description: "Demonstrates if/else, loops, and case statements"
+---
+
+# Control Flow Examples
+
+## Conditional Statements
+
+{% if user.authenticated %}
+  Welcome back, {{ user.name }}!
+{% else %}
+  Please log in to continue.
+{% endif %}
+
+{% unless user.premium %}
+  Upgrade to premium for more features!
+{% endunless %}
+
+## Loops
+
+### For Loop
+{% for product in products %}
+  {{ forloop.index }}. {{ product.name }} - ${{ product.price }}
+{% endfor %}
+
+### For Loop with Conditions
+{% for item in items %}
+  {% if item.featured %}
+    ⭐ {{ item.name }} (Featured)
+  {% else %}
+    - {{ item.name }}
+  {% endif %}
+{% endfor %}
+
+### For Loop with Limits
+{% for post in posts limit: 5 %}
+  {{ post.title }}
+{% endfor %}
+
+## Case Statement
+{% case user.subscription %}
+  {% when 'basic' %}
+    You have basic access.
+  {% when 'premium' %}
+    You have premium access.
+  {% when 'enterprise' %}
+    You have enterprise access.
+  {% else %}
+    Please choose a subscription plan.
+{% endcase %}
+
+## Nested Conditions
+{% for category in categories %}
+  <h2>{{ category.name }}</h2>
+  {% if category.products.size > 0 %}
+    {% for product in category.products %}
+      {% if product.in_stock %}
+        ✅ {{ product.name }} - Available
+      {% else %}
+        ❌ {{ product.name }} - Out of Stock
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <p>No products in this category.</p>
+  {% endif %}
+{% endfor %}

@@ -1,0 +1,23 @@
+---
+title: "Basic Liquid Template Example"
+description: "Demonstrates basic variable substitution and text output"
+---
+
+# Basic Template Example
+
+Hello, {{ name }}!
+
+Welcome to {{ site_name }}.
+
+{% if greeting %}
+{{ greeting }}
+{% endif %}
+
+Your role: {{ user.role }}
+Your score: {{ user.score }}
+
+{% for item in items %}
+- {{ item }}
+{% endfor %}
+
+Thank you for visiting!
