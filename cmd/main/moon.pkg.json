@@ -1,6 +1,6 @@
 {
   "is-main": true,
   "import": [
-    "username/hello"
+    "bobzhang/liquid"
   ]
 }

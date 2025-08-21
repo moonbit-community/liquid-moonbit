@@ -1,0 +1,93 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/liquid"
+
+// Values
+fn apply_filter(LiquidValue, String) -> LiquidValue
+
+fn array_value(Array[LiquidValue]) -> LiquidValue
+
+fn bool_value(Bool) -> LiquidValue
+
+fn case_node(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?) -> LiquidNode
+
+fn evaluate_condition(String, LiquidContext) -> Bool
+
+fn evaluate_expression(String, LiquidContext) -> LiquidValue
+
+fn for_node(String, String, Array[LiquidNode]) -> LiquidNode
+
+fn if_node(String, Array[LiquidNode], Array[LiquidNode]?) -> LiquidNode
+
+fn null_value() -> LiquidValue
+
+fn number_value(Double) -> LiquidValue
+
+fn object_value(Map[String, LiquidValue]) -> LiquidValue
+
+fn parse(String) -> LiquidTemplate
+
+fn render_node(LiquidNode, LiquidContext) -> String
+
+fn silent_policy() -> ErrorPolicy
+
+fn strict_policy() -> ErrorPolicy
+
+fn string_value(String) -> LiquidValue
+
+fn text_node(String) -> LiquidNode
+
+fn unless_node(String, Array[LiquidNode]) -> LiquidNode
+
+fn variable_node(String, Array[String]) -> LiquidNode
+
+fn warn_policy() -> ErrorPolicy
+
+// Errors
+
+// Types and methods
+pub enum ErrorPolicy {
+  Strict
+  Warn
+  Silent
+}
+
+pub struct LiquidContext {
+  variables : Map[String, LiquidValue]
+  error_policy : ErrorPolicy
+}
+fn LiquidContext::get(Self, String) -> LiquidValue?
+fn LiquidContext::new() -> Self
+fn LiquidContext::set(Self, String, LiquidValue) -> Unit
+fn LiquidContext::with_error_policy(ErrorPolicy) -> Self
+
+pub enum LiquidNode {
+  Text(String)
+  Variable(String, Array[String])
+  For(String, String, Array[LiquidNode])
+  If(String, Array[LiquidNode], Array[LiquidNode]?)
+  Unless(String, Array[LiquidNode])
+  Case(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?)
+  Assign(String, String)
+  Comment(String)
+}
+
+pub struct LiquidTemplate {
+  nodes : Array[LiquidNode]
+}
+fn LiquidTemplate::new() -> Self
+fn LiquidTemplate::render(Self, LiquidContext) -> String
+
+pub enum LiquidValue {
+  String(String)
+  Number(Double)
+  Bool(Bool)
+  Array(Array[LiquidValue])
+  Object(Map[String, LiquidValue])
+  Null
+}
+fn LiquidValue::to_string(Self) -> String
+
+// Type aliases
+
+// Traits
+
