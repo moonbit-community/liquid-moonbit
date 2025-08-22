@@ -8,7 +8,7 @@ pub enum LiquidValue {
   Array(Array[LiquidValue])
   Object(Map[String, LiquidValue])
   Null
-}
+} derive(ToJson(style="flat"))
 
 /// Error handling policies
 
@@ -17,7 +17,7 @@ pub enum ErrorPolicy {
   Strict // Fail on errors
   Warn // Print warnings but continue
   Silent // Ignore errors silently
-}
+} derive(ToJson(style="flat"))
 
 // Context for variable storage
 
@@ -25,7 +25,7 @@ pub enum ErrorPolicy {
 pub struct LiquidContext {
   variables : Map[String, LiquidValue]
   error_policy : ErrorPolicy
-}
+} derive(ToJson)
 
 // Filter with optional parameters
 
@@ -33,7 +33,7 @@ pub struct LiquidContext {
 pub struct Filter {
   name : String
   parameters : Array[String]
-}
+} derive(ToJson)
 
 // For loop modifiers
 
@@ -42,7 +42,7 @@ pub struct ForLoopModifiers {
   limit : Int?
   offset : Int?
   reversed : Bool
-}
+} derive(ToJson)
 
 // Template structure
 
@@ -79,7 +79,7 @@ pub enum LiquidNode {
   Layout(String) // layout template name
   Block(String, Array[LiquidNode]) // block_name, default_content
   Content // placeholder for main content in layouts
-}
+} derive(ToJson(style="flat"))
 
 // Whitespace control flags
 
@@ -87,7 +87,7 @@ pub enum LiquidNode {
 pub struct WhitespaceControl {
   strip_left : Bool
   strip_right : Bool
-}
+} derive(ToJson)
 
 // Template with layout information
 
@@ -96,11 +96,11 @@ pub struct TemplateWithLayout {
   nodes : Array[LiquidNode]
   layout : String?
   blocks : Map[String, Array[LiquidNode]]
-}
+} derive(ToJson)
 
 // Simple template parser
 
 ///|
 pub struct LiquidTemplate {
   nodes : Array[LiquidNode]
-}
+} derive(ToJson)
