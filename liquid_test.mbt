@@ -1620,6 +1620,7 @@ test "error policy context isolation" {
 test "whitespace control parsing" {
   // Test that whitespace control syntax is recognized
   let template = parse("{{- name -}}")
+  @json.inspect(template, content=({"nodes":[["Variable","- name -",[]]]}))
   let context = LiquidContext::new()
   context.set("- name -", string_value("World")) // Parser treats this as variable name
   let result = template.render(context)
@@ -1645,6 +1646,93 @@ test "whitespace control mixed" {
   context.set("- name", string_value("Content")) // Parser treats this as variable name
   let result = template.render(context)
   assert_eq(result, "Before Content After")
+}
+
+// WhitespaceControl Struct Tests
+
+///|
+test "whitespace control struct creation" {
+  // Test WhitespaceControl struct constructor functions
+  let ws_both = whitespace_control(true, true)
+  @json.inspect(ws_both, content=({"strip_left":true,"strip_right":true}))
+  
+  let ws_left = whitespace_control(true, false)
+  @json.inspect(ws_left, content=({"strip_left":true,"strip_right":false}))
+  
+  let ws_right = whitespace_control(false, true)
+  @json.inspect(ws_right, content=({"strip_left":false,"strip_right":true}))
+  
+  let ws_none = no_whitespace_control()
+  @json.inspect(ws_none, content=({"strip_left":false,"strip_right":false}))
+  
+  // Verify properties
+  assert_eq(ws_both.strip_left, true)
+  assert_eq(ws_both.strip_right, true)
+  assert_eq(ws_left.strip_left, true)
+  assert_eq(ws_left.strip_right, false)
+  assert_eq(ws_right.strip_left, false)
+  assert_eq(ws_right.strip_right, true)
+  assert_eq(ws_none.strip_left, false)
+  assert_eq(ws_none.strip_right, false)
+}
+
+///|
+test "whitespace control practical usage" {
+  // Test WhitespaceControl in practical scenarios
+  
+  // Test different whitespace control configurations
+  let controls = [
+    whitespace_control(true, true),   // Strip both sides
+    whitespace_control(true, false),  // Strip left only
+    whitespace_control(false, true),  // Strip right only
+    no_whitespace_control()           // No stripping
+  ]
+  
+  for i in 0..<controls.length() {
+    let control = controls[i]
+    // Verify the control object is properly constructed
+    match i {
+      0 => {
+        assert_eq(control.strip_left, true)
+        assert_eq(control.strip_right, true)
+      }
+      1 => {
+        assert_eq(control.strip_left, true)
+        assert_eq(control.strip_right, false)
+      }
+      2 => {
+        assert_eq(control.strip_left, false)
+        assert_eq(control.strip_right, true)
+      }
+      3 => {
+        assert_eq(control.strip_left, false)
+        assert_eq(control.strip_right, false)
+      }
+      _ => fail("Unexpected index")
+    }
+  }
+}
+
+///|
+test "whitespace control edge cases" {
+  // Test WhitespaceControl with edge cases
+  let ws_control = whitespace_control(true, true)
+  
+  // Test with empty content
+  assert_eq(ws_control.strip_left, true)
+  assert_eq(ws_control.strip_right, true)
+  
+  // Test multiple instances
+  let controls = Array::new()
+  for i in 0..<5 {
+    controls.push(whitespace_control(i % 2 == 0, i % 3 == 0))
+  }
+  
+  assert_eq(controls.length(), 5)
+  assert_eq(controls[0].strip_left, true)  // 0 % 2 == 0
+  assert_eq(controls[0].strip_right, true) // 0 % 3 == 0
+  assert_eq(controls[1].strip_left, false) // 1 % 2 == 1
+  assert_eq(controls[1].strip_right, false) // 1 % 3 == 1
 }
 
 // Helper function tests to eliminate unused variant warnings
@@ -5309,6 +5397,153 @@ test "layout system basic functionality" {
   let context = LiquidContext::new()
   let result = render_node(layout_test, context)
   assert_eq(result, "<!-- Layout: base -->")
+}
+
+// TemplateWithLayout Struct Tests
+
+///|
+test "template with layout struct creation" {
+  // Test TemplateWithLayout struct constructor functions
+  let nodes = [text_node("Hello"), variable_node("name", []), text_node("!")]
+  let blocks = Map::new()
+  blocks.set("header", [text_node("Header Content")])
+  blocks.set("footer", [text_node("Footer Content")])
+  
+  // Test with layout
+  let template_with = template_with_layout(nodes, Some("base"), blocks)
+  @json.inspect(template_with, content=({"nodes":[["Text","Hello"],["Variable","name",[]],["Text","!"]],"layout":"base","blocks":{"header":[["Text","Header Content"]],"footer":[["Text","Footer Content"]]}}))
+  
+  // Test without layout
+  let template_simple = simple_template_with_layout(nodes)
+  @json.inspect(template_simple, content=({"nodes":[["Text","Hello"],["Variable","name",[]],["Text","!"]],"blocks":{}}))
+  
+  // Verify properties
+  assert_eq(template_with.nodes.length(), 3)
+  match template_with.layout {
+    Some(layout) => assert_eq(layout, "base")
+    None => fail("Expected layout to be Some")
+  }
+  assert_eq(template_with.blocks.size(), 2)
+  
+  assert_eq(template_simple.nodes.length(), 3)
+  match template_simple.layout {
+    Some(_) => fail("Expected layout to be None")
+    None => ()
+  }
+  assert_eq(template_simple.blocks.size(), 0)
+}
+
+///|
+test "template with layout complex scenarios" {
+  // Test TemplateWithLayout with complex template structures
+  let main_nodes = [
+    text_node("Main content: "),
+    variable_node("content", [filter("upcase", [])]),
+    text_node(".")
+  ]
+  
+  let blocks = Map::new()
+  blocks.set("sidebar", [
+    text_node("Sidebar: "),
+    variable_node("sidebar_content", []),
+    text_node(" | "),
+    variable_node("user.name", [])
+  ])
+  blocks.set("navigation", [
+    text_node("<nav>"),
+    variable_node("nav_items", [filter("join", [" | "])]),
+    text_node("</nav>")
+  ])
+  
+  let template = template_with_layout(main_nodes, Some("complex_layout"), blocks)
+  
+  // Verify structure
+  assert_eq(template.nodes.length(), 3)
+  assert_eq(template.blocks.size(), 2)
+  match template.layout {
+    Some(layout) => assert_eq(layout, "complex_layout")
+    None => fail("Expected layout")
+  }
+  
+  // Verify block contents
+  match template.blocks.get("sidebar") {
+    Some(sidebar_nodes) => assert_eq(sidebar_nodes.length(), 4)
+    None => fail("Expected sidebar block")
+  }
+  match template.blocks.get("navigation") {
+    Some(nav_nodes) => assert_eq(nav_nodes.length(), 3)
+    None => fail("Expected navigation block")
+  }
+}
+
+///|
+test "template with layout edge cases" {
+  // Test TemplateWithLayout with edge cases
+  
+  // Empty template
+  let empty_template = simple_template_with_layout([])
+  assert_eq(empty_template.nodes.length(), 0)
+  assert_eq(empty_template.blocks.size(), 0)
+  
+  // Template with empty blocks map
+  let empty_blocks = Map::new()
+  let template_empty_blocks = template_with_layout(
+    [text_node("content")], 
+    Some("layout"), 
+    empty_blocks
+  )
+  assert_eq(template_empty_blocks.blocks.size(), 0)
+  
+  // Template with multiple identical block names (should overwrite)
+  let blocks = Map::new()
+  blocks.set("content", [text_node("First")])
+  blocks.set("content", [text_node("Second")]) // Overwrites first
+  
+  let template = template_with_layout([text_node("main")], None, blocks)
+  assert_eq(template.blocks.size(), 1)
+  match template.blocks.get("content") {
+    Some(nodes) => {
+      assert_eq(nodes.length(), 1)
+      match nodes[0] {
+        Text(content) => assert_eq(content, "Second")
+        _ => fail("Expected Text node")
+      }
+    }
+    None => fail("Expected content block")
+  }
+}
+
+///|
+test "template with layout integration" {
+  // Test TemplateWithLayout integration with existing layout system
+  let main_content = [
+    text_node("Welcome to "),
+    variable_node("site.name", []),
+    text_node("!")
+  ]
+  
+  let blocks = Map::new()
+  blocks.set("title", [variable_node("page.title", [filter("upcase", [])])])
+  blocks.set("meta", [text_node("<meta name='description' content='"),
+                     variable_node("page.description", []),
+                     text_node("'>")])
+  
+  let template_layout = template_with_layout(main_content, Some("base"), blocks)
+  
+  // Test that it integrates with existing layout functionality
+  let layout_node_test = layout_node("base")
+  let context = LiquidContext::new()
+  let layout_result = render_node(layout_node_test, context)
+  assert_eq(layout_result, "<!-- Layout: base -->")
+  
+  // Verify template structure matches expected layout integration
+  match template_layout.layout {
+    Some(layout_name) => assert_eq(layout_name, "base")
+    None => fail("Expected layout name")
+  }
+  
+  assert_eq(template_layout.nodes.length(), 3)
+  assert_eq(template_layout.blocks.size(), 2)
 }
 
 ///|

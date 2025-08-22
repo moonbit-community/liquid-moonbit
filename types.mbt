@@ -89,6 +89,16 @@ pub struct WhitespaceControl {
   strip_right : Bool
 } derive(ToJson)
 
+///|
+pub fn whitespace_control(strip_left : Bool, strip_right : Bool) -> WhitespaceControl {
+  { strip_left, strip_right }
+}
+
+///|
+pub fn no_whitespace_control() -> WhitespaceControl {
+  { strip_left: false, strip_right: false }
+}
+
 // Template with layout information
 
 ///|
@@ -97,6 +107,20 @@ pub struct TemplateWithLayout {
   layout : String?
   blocks : Map[String, Array[LiquidNode]]
 } derive(ToJson)
+
+///|
+pub fn template_with_layout(
+  nodes : Array[LiquidNode], 
+  layout : String?, 
+  blocks : Map[String, Array[LiquidNode]]
+) -> TemplateWithLayout {
+  { nodes, layout, blocks }
+}
+
+///|
+pub fn simple_template_with_layout(nodes : Array[LiquidNode]) -> TemplateWithLayout {
+  { nodes, layout: None, blocks: Map::new() }
+}
 
 // Simple template parser
 

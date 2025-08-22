@@ -71,6 +71,7 @@ fn handle_error(context : LiquidContext, message : String) -> String {
 }
 
 ///|
+#alias(op_set)
 pub fn set(self : LiquidContext, key : String, value : LiquidValue) -> Unit {
   self.variables[key] = value
 }
