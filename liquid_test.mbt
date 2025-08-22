@@ -5105,3 +5105,749 @@ test "layout and block integration" {
   let result_custom = render_with_layout(page_template, layout_template, context)
   assert_eq(result_custom, "<html><head><title>Page: Custom Page Title</title></head></html>")
 }
+
+///|
+test "pluralize filter fallback case" {
+  // Test the uncovered fallback case in pluralize filter
+  let template = parse("{{ count | pluralize: 'item', 'items' }}")
+  let context = LiquidContext::new()
+  context.set("count", string_value("not_a_number"))  // Non-number input
+  let result = template.render(context)
+  assert_eq(result, "not_a_number")  // Should return original value
+}
+
+///|
+test "pluralize filter parameter variations" {
+  // Test different parameter count cases for pluralize
+  let template1 = parse("{{ count | pluralize: 'item' }}")  // Only one parameter
+  let context1 = LiquidContext::new()
+  context1.set("count", number_value(1.0))
+  let result1 = template1.render(context1)
+  assert_eq(result1, "1 item")  // Should use basic pluralize logic
+
+  // Test with different word counts
+  let template2 = parse("{{ count | pluralize: 'cat', 'cats' }}")
+  let context2 = LiquidContext::new()
+  context2.set("count", number_value(2.5))
+  let result2 = template2.render(context2)
+  assert_eq(result2, "2.5 cats")
+}
+
+///|
+test "sort_by filter with missing property" {
+  // Test uncovered case where object doesn't have the specified property
+  let template = parse("{{ items | sort_by: 'missing_prop' }}")
+  let context = LiquidContext::new()
+  
+  let obj1 = Map::new()
+  obj1.set("name", string_value("Alice"))
+  
+  let obj2 = Map::new()
+  obj2.set("name", string_value("Bob"))
+  
+  let items = array_value([object_value(obj1), object_value(obj2)])
+  context.set("items", items)
+  let result = template.render(context)
+  assert_eq(result, "[{\"name\": Alice}, {\"name\": Bob}]")  // Should handle missing property
+}
+
+///|
+test "sort_by filter with non-object items" {
+  // Test uncovered case where array contains non-object items
+  let template = parse("{{ items | sort_by: 'name' }}")
+  let context = LiquidContext::new()
+  
+  let items = array_value([string_value("zebra"), string_value("apple"), number_value(42.0)])
+  context.set("items", items)
+  let result = template.render(context)
+  assert_eq(result, "[42, apple, zebra]")  // Should sort by string representation
+}
+
+///|
+test "sort_by filter non-array input" {
+  // Test uncovered case where input is not an array
+  let template = parse("{{ text | sort_by: 'prop' }}")
+  let context = LiquidContext::new()
+  context.set("text", string_value("not an array"))
+  let result = template.render(context)
+  assert_eq(result, "not an array")  // Should return original value
+}
+
+///|
+test "truncatewords filter edge cases" {
+  // Test uncovered parameter values in truncatewords
+  let template1 = parse("{{ text | truncatewords: 15 }}")
+  let context1 = LiquidContext::new()
+  context1.set("text", string_value("This has exactly fifteen words in it to test the truncation functionality properly"))
+  let result1 = template1.render(context1)
+  assert_eq(result1, "This has exactly fifteen words in it to test the truncation functionality properly")
+
+  let template2 = parse("{{ text | truncatewords: 20 }}")
+  let context2 = LiquidContext::new()
+  context2.set("text", string_value("This is a test"))
+  let result2 = template2.render(context2)
+  assert_eq(result2, "This is a test")  // Should not truncate if under limit
+
+  let template3 = parse("{{ text | truncatewords: 25 }}")
+  let context3 = LiquidContext::new()
+  context3.set("text", string_value("word"))
+  let result3 = template3.render(context3)
+  assert_eq(result3, "word")
+
+  let template4 = parse("{{ text | truncatewords: 30 }}")
+  let context4 = LiquidContext::new()
+  context4.set("text", string_value("test"))
+  let result4 = template4.render(context4)
+  assert_eq(result4, "test")
+
+  // Test default fallback case
+  let template5 = parse("{{ text | truncatewords: 999 }}")
+  let context5 = LiquidContext::new()
+  context5.set("text", string_value("This should use the default word count"))
+  let result5 = template5.render(context5)
+  assert_eq(result5, "This should use the default word count")
+}
+
+///|
+test "truncatewords filter non-string input" {
+  // Test uncovered case where input is not a string
+  let template = parse("{{ number | truncatewords: 5 }}")
+  let context = LiquidContext::new()
+  context.set("number", number_value(42.0))
+  let result = template.render(context)
+  assert_eq(result, "42")  // Should return original value
+}
+
+///|
+test "truncatewords filter fallback to basic" {
+  // Test uncovered fallback to basic truncatewords
+  let template = parse("{{ text | truncatewords }}")
+  let context = LiquidContext::new()
+  context.set("text", string_value("This is a very long sentence with many words to test truncation"))
+  let result = template.render(context)
+  // Should use basic truncatewords which defaults to 15 words
+  assert_eq(result, "This is a very long sentence with many words to test truncation")
+}
+
+///|
+test "at filter non-array input" {
+  // Test uncovered case where input is not an array for at filter
+  let template = parse("{{ text | at: 0 }}")
+  let context = LiquidContext::new()
+  context.set("text", string_value("not an array"))
+  let result = template.render(context)
+  assert_eq(result, "not an array")  // Should return original value
+}
+
+///|
+test "strip_tags filter non-string input" {
+  // Test uncovered case where input is not a string for strip_tags
+  let template = parse("{{ number | strip_tags }}")
+  let context = LiquidContext::new()
+  context.set("number", number_value(42.0))
+  let result = template.render(context)
+  assert_eq(result, "42")  // Should return original value
+}
+
+///|
+test "normalize_whitespace filter non-string input" {
+  // Test uncovered case where input is not a string for normalize_whitespace
+  let template = parse("{{ number | normalize_whitespace }}")
+  let context = LiquidContext::new()
+  context.set("number", number_value(42.0))
+  let result = template.render(context)
+  assert_eq(result, "42")  // Should return original value
+}
+
+///|
+test "money_without_trailing_zeros filter edge case" {
+  // Test uncovered case for money_without_trailing_zeros
+  let template = parse("{{ price | money_without_trailing_zeros }}")
+  let context = LiquidContext::new()
+  context.set("price", number_value(10.0))  // Number ending in .0
+  let result = template.render(context)
+  assert_eq(result, "$10")  // Should remove .0
+}
+
+///|
+test "truncatewords basic filter without parameters" {
+  // Test uncovered case in basic truncatewords filter
+  let template = parse("{{ text | truncatewords }}")
+  let context = LiquidContext::new()
+  context.set("text", string_value("short"))
+  let result = template.render(context)
+  assert_eq(result, "short")  // Should return original if under limit
+}
+
+///|
+test "truncatewords basic filter non-string input" {
+  // Test uncovered case in basic truncatewords filter with non-string
+  let template = parse("{{ number | truncatewords }}")
+  let context = LiquidContext::new()
+  context.set("number", number_value(42.0))
+  let result = template.render(context)
+  assert_eq(result, "42")  // Should return original value
+}
+
+///|
+test "direct filter application uncovered cases" {
+  // Test uncovered cases in apply_filter_with_params by calling directly
+  
+  // Test pluralize with non-number input (should fallback)
+  let pluralize_filter = filter("pluralize", ["item", "items"])
+  let non_number_result = apply_filter_with_params(string_value("text"), pluralize_filter)
+  assert_eq(non_number_result.to_string(), "text")
+  
+  // Test sort_by with missing property
+  let obj_map = Map::new()
+  obj_map.set("other_prop", string_value("value"))
+  let obj_with_missing = object_value(obj_map)
+  let sort_by_filter = filter("sort_by", ["missing"])
+  let sort_result = apply_filter_with_params(array_value([obj_with_missing]), sort_by_filter)
+  assert_eq(sort_result.to_string(), "[{\"other_prop\": value}]")
+  
+  // Test sort_by with non-object in array
+  let mixed_array = array_value([string_value("zebra"), number_value(1.0)])
+  let sort_mixed_result = apply_filter_with_params(mixed_array, sort_by_filter)
+  assert_eq(sort_mixed_result.to_string(), "[1, zebra]")
+}
+
+///|
+test "additional filter edge cases for complete coverage" {
+  // Test more uncovered edge cases
+  
+  // Test truncatewords with various parameter values
+  let text = string_value("word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20")
+  
+  let filter15 = filter("truncatewords", ["15"])
+  let result15 = apply_filter_with_params(text, filter15)
+  assert_eq(result15.to_string(), "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15...")
+  
+  let filter20 = filter("truncatewords", ["20"])
+  let result20 = apply_filter_with_params(text, filter20)
+  assert_eq(result20.to_string(), "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20")
+  
+  let filter25 = filter("truncatewords", ["25"])
+  let result25 = apply_filter_with_params(text, filter25)
+  assert_eq(result25.to_string(), "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20")
+  
+  let filter30 = filter("truncatewords", ["30"])
+  let result30 = apply_filter_with_params(text, filter30)
+  assert_eq(result30.to_string(), "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20")
+  
+  // Test unknown parameter (should use default)
+  let filter_unknown = filter("truncatewords", ["unknown"])
+  let result_unknown = apply_filter_with_params(text, filter_unknown)
+  assert_eq(result_unknown.to_string(), "word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15...")
+}
+
+///|
+test "remaining uncovered filter cases" {
+  // Test uncovered cases in basic apply_filter function
+  
+  // Test at filter with non-array input
+  let at_result = apply_filter(string_value("not_array"), "at")
+  assert_eq(at_result.to_string(), "not_array")
+  
+  // Test truncatewords with non-string input
+  let truncate_result = apply_filter(number_value(42.0), "truncatewords")
+  assert_eq(truncate_result.to_string(), "42")
+  
+  // Test money_without_trailing_zeros edge case with .0
+  let money_result = apply_filter(number_value(10.0), "money_without_trailing_zeros")
+  assert_eq(money_result.to_string(), "$10")
+}
+
+///|
+test "additional edge cases for complete coverage" {
+  // Test more edge cases to increase coverage
+  
+  // Test strip_tags with non-string
+  let strip_tags_result = apply_filter(number_value(123.0), "strip_tags")
+  assert_eq(strip_tags_result.to_string(), "123")
+  
+  // Test normalize_whitespace with non-string  
+  let normalize_result = apply_filter(bool_value(true), "normalize_whitespace")
+  assert_eq(normalize_result.to_string(), "true")
+  
+  // Test various filters with different input types to hit uncovered branches
+  let filters_to_test = ["strip_tags", "normalize_whitespace", "truncatewords", "at"]
+  let non_string_inputs = [number_value(42.0), bool_value(false), null_value()]
+  
+  for filter_name in filters_to_test {
+    for input in non_string_inputs {
+      let result = apply_filter(input, filter_name)
+      // These should all return the original input when type doesn't match
+      assert_eq(result.to_string(), input.to_string())
+    }
+  }
+}
+
+///|
+test "money_without_trailing_zeros specific edge case" {
+  // Test the specific uncovered line in money_without_trailing_zeros
+  // This tests numbers that end with .0 to trigger the strip_suffix logic
+  let test_values = [10.0, 5.0, 100.0, 0.0, 1.0]
+  
+  for val in test_values {
+    let result = apply_filter(number_value(val), "money_without_trailing_zeros")
+    let expected = "$" + val.to_int().to_string()
+    assert_eq(result.to_string(), expected)
+  }
+}
+
+///|
+test "filter parameter quote handling comprehensive" {
+  // Test quote handling in filter parameters - both single and double quotes
+  
+  // Test pluralize with double quotes
+  let template1 = parse("{{ count | pluralize: \"item\", \"items\" }}")
+  let context1 = LiquidContext::new()
+  context1.set("count", number_value(2.0))
+  let result1 = template1.render(context1)
+  assert_eq(result1, "2 items")
+  
+  // Test pluralize with single quotes
+  let template2 = parse("{{ count | pluralize: 'item', 'items' }}")
+  let context2 = LiquidContext::new()
+  context2.set("count", number_value(1.0))
+  let result2 = template2.render(context2)
+  assert_eq(result2, "1 item")
+  
+  // Test sort_by with single quotes
+  let template3 = parse("{{ items | sort_by: 'name' }}")
+  let context3 = LiquidContext::new()
+  let obj1 = Map::new()
+  obj1.set("name", string_value("zebra"))
+  let obj2 = Map::new()
+  obj2.set("name", string_value("apple"))
+  context3.set("items", array_value([object_value(obj1), object_value(obj2)]))
+  let result3 = template3.render(context3)
+  assert_eq(result3, "[{\"name\": apple}, {\"name\": zebra}]")
+  
+  // Test map filter with single quotes
+  let template4 = parse("{{ items | map: 'name' }}")
+  let context4 = LiquidContext::new()
+  context4.set("items", array_value([object_value(obj1), object_value(obj2)]))
+  let result4 = template4.render(context4)
+  assert_eq(result4, "[zebra, apple]")
+}
+
+///|
+test "filter parameter edge cases without quotes" {
+  // Test parameters without quotes to trigger else branches
+  
+  // Test pluralize with unquoted parameters
+  let pluralize_filter = filter("pluralize", ["item", "items"])
+  let result1 = apply_filter_with_params(number_value(1.0), pluralize_filter)
+  assert_eq(result1.to_string(), "1 item")
+  
+  let result2 = apply_filter_with_params(number_value(3.0), pluralize_filter)
+  assert_eq(result2.to_string(), "3 items")
+  
+  // Test sort_by with unquoted parameter
+  let sort_filter = filter("sort_by", ["name"])
+  let obj1 = Map::new()
+  obj1.set("name", string_value("zebra"))
+  let obj2 = Map::new()
+  obj2.set("name", string_value("apple"))
+  let items = array_value([object_value(obj1), object_value(obj2)])
+  let sort_result = apply_filter_with_params(items, sort_filter)
+  assert_eq(sort_result.to_string(), "[{\"name\": apple}, {\"name\": zebra}]")
+  
+  // Test map filter with unquoted parameter
+  let map_filter = filter("map", ["name"])
+  let map_result = apply_filter_with_params(items, map_filter)
+  assert_eq(map_result.to_string(), "[zebra, apple]")
+}
+
+///|
+test "comprehensive filter fallback scenarios" {
+  // Test various fallback scenarios to increase coverage
+  
+  // Test where filter fallback
+  let where_filter = filter("where", [])  // No parameters
+  let items = array_value([string_value("test"), string_value("filter")])
+  let where_result = apply_filter_with_params(items, where_filter)
+  assert_eq(where_result.to_string(), "[filter]")  // Should use basic where filter
+  
+  // Test map filter fallback
+  let map_filter = filter("map", [])  // No parameters
+  let map_result = apply_filter_with_params(items, map_filter)
+  assert_eq(map_result.to_string(), "[test, filter]")  // Should use basic map filter
+  
+  // Test truncatewords filter fallback
+  let truncate_filter = filter("truncatewords", [])  // No parameters
+  let long_text = string_value("This is a very long text with many words that should be truncated by the filter")
+  let truncate_result = apply_filter_with_params(long_text, truncate_filter)
+  assert_eq(truncate_result.to_string(), "This is a very long text with many words that should be truncated by the...")
+}
+
+///|
+test "array index edge cases for at filter" {
+  // Test specific index values for at filter to cover all branches
+  
+  let test_array = array_value([
+    string_value("zero"), string_value("one"), string_value("two"), 
+    string_value("three"), string_value("four"), string_value("five")
+  ])
+  
+  // Test various index parameters
+  let indices = ["0", "1", "2", "3", "4", "5", "-1", "-2"]
+  let expected = ["zero", "one", "two", "three", "four", "five", "five", "four"]
+  
+  for i in 0..<indices.length() {
+    let at_filter = filter("at", [indices[i]])
+    let result = apply_filter_with_params(test_array, at_filter)
+    assert_eq(result.to_string(), expected[i])
+  }
+  
+  // Test out of bounds index (should default to first element)
+  let out_of_bounds_filter = filter("at", ["10"])
+  let out_result = apply_filter_with_params(test_array, out_of_bounds_filter)
+  assert_eq(out_result.to_string(), "zero")  // Should default to first element when out of bounds
+  
+  // Test -2 with small array
+  let small_array = array_value([string_value("only")])
+  let small_filter = filter("at", ["-2"])
+  let small_result = apply_filter_with_params(small_array, small_filter)
+  assert_eq(small_result.to_string(), "only")  // Should default to index 0
+}
+
+///|
+test "map filter with missing properties" {
+  // Test map filter when objects don't have the specified property
+  
+  let obj1 = Map::new()
+  obj1.set("name", string_value("Alice"))
+  // obj1 doesn't have "age" property
+  
+  let obj2 = Map::new()
+  obj2.set("age", number_value(30.0))
+  // obj2 doesn't have "name" property
+  
+  let items = array_value([object_value(obj1), object_value(obj2)])
+  
+  // Test mapping by "age" property
+  let map_age_filter = filter("map", ["age"])
+  let result = apply_filter_with_params(items, map_age_filter)
+  assert_eq(result.to_string(), "[null, 30]")  // Missing property should return null
+}
+
+///|
+test "direct filter application for maximum coverage" {
+  // Test direct filter application to hit remaining uncovered cases
+  
+  // Test money_without_trailing_zeros with numbers that have .0
+  let money_vals = [10.0, 25.0, 100.0, 0.0]
+  for val in money_vals {
+    let result = apply_filter(number_value(val), "money_without_trailing_zeros")
+    // This should trigger the uncovered line
+    let expected_val = val.to_int().to_string()
+    assert_eq(result.to_string(), "$" + expected_val)
+  }
+  
+  // Test various filters with edge case inputs
+  let edge_inputs = [null_value(), bool_value(true), bool_value(false)]
+  let filters_to_test = ["upcase", "downcase", "trim", "capitalize", "split"]
+  
+  for filter_name in filters_to_test {
+    for input in edge_inputs {
+      let result = apply_filter(input, filter_name)
+      // These should all return the original input for non-matching types
+      assert_eq(result.to_string(), input.to_string())
+    }
+  }
+}
+
+///|
+test "comprehensive parameter parsing edge cases" {
+  // Test edge cases in parameter parsing for filters
+  
+  // Test with various parameter formats
+  let params = ["\"quoted\"", "'single'", "unquoted", "\"", "'", ""]
+  let expected_results = ["quoted", "single", "unquoted", "\"", "'", ""]
+  
+  for i in 0..<params.length() {
+    let param = params[i]
+    let expected = expected_results[i]
+    
+    // Test with pluralize filter
+    let pluralize_filter = filter("pluralize", [param, "items"])
+    let result = apply_filter_with_params(number_value(1.0), pluralize_filter)
+    assert_eq(result.to_string(), "1 " + expected)
+  }
+}
+
+///|
+test "money_without_trailing_zeros precise edge case" {
+  // Very specific test to trigger the exact uncovered line 2576
+  // This tests the strip_suffix(".0") logic specifically
+  
+  // Create numbers that specifically end with .0 in their string representation
+  let precise_numbers = [
+    1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0, 100.0, 1000.0, 0.0
+  ]
+  
+  for num in precise_numbers {
+    let result = apply_filter(number_value(num), "money_without_trailing_zeros")
+    let num_str = num.to_string()
+    
+    // Check if the number string representation ends with ".0"
+    if num_str.strip_suffix(".0") != None {
+      // This should trigger line 2576
+      let expected = "$" + num.to_int().to_string()
+      assert_eq(result.to_string(), expected)
+    } else {
+      let expected = "$" + num_str
+      assert_eq(result.to_string(), expected)
+    }
+  }
+  
+  // Test with specific floating point values that should have .0 suffix
+  let specific_test = apply_filter(number_value(42.0), "money_without_trailing_zeros")
+  assert_eq(specific_test.to_string(), "$42")
+}
+
+///|
+test "advanced string manipulation edge cases" {
+  // Test advanced string manipulation scenarios
+  
+  // Test capitalize with various edge cases
+  let capitalize_cases = [
+    ("", ""),
+    ("a", "A"),
+    ("HELLO", "Hello"),
+    ("hELLO wORLD", "Hello world"),
+    ("123abc", "123abc")
+  ]
+  
+  for i in 0..<capitalize_cases.length() {
+    let input = capitalize_cases[i].0
+    let expected = capitalize_cases[i].1
+    let result = apply_filter(string_value(input), "capitalize")
+    assert_eq(result.to_string(), expected)
+  }
+  
+  // Test unicode strings (may not support full unicode capitalization)
+  let unicode_result = apply_filter(string_value("ñoño"), "capitalize")
+  match unicode_result {
+    String(_) => ()  // Just verify it doesn't crash
+    _ => fail("capitalize should handle unicode strings")
+  }
+  
+  // Test truncate with exact boundary conditions
+  let long_string_50 = "12345678901234567890123456789012345678901234567890"  // Exactly 50 chars
+  let long_string_51 = "123456789012345678901234567890123456789012345678901" // 51 chars
+  
+  let result_50 = apply_filter(string_value(long_string_50), "truncate")
+  assert_eq(result_50.to_string(), long_string_50)  // Should not truncate
+  
+  let result_51 = apply_filter(string_value(long_string_51), "truncate")
+  assert_eq(result_51.to_string(), long_string_50 + "...")  // Should truncate
+}
+
+///|
+test "numeric precision and edge cases" {
+  // Test numeric operations with various floating point values
+  
+  let test_numbers = [
+    0.0, 0.1, 0.5, 0.9, 1.0, 1.1, 1.5, 1.9, 2.0,
+    -1.0, -0.5, 10.0, 100.0, 1000.0, 0.001, 999.999
+  ]
+  
+  // Test all math filters with edge cases
+  let math_filters = ["plus", "minus", "times", "divided_by", "modulo", "round", "ceil", "floor", "abs"]
+  
+  for filter_name in math_filters {
+    for num in test_numbers {
+      let result = apply_filter(number_value(num), filter_name)
+      // Verify result is still a number (not NaN or error)
+      match result {
+        Number(_) => ()  // Good
+        _ => fail("Math filter " + filter_name + " should return Number for input " + num.to_string())
+      }
+    }
+  }
+}
+
+///|
+test "complex filter parameter combinations" {
+  // Test complex combinations of filters with parameters
+  
+  // Test pluralize with edge case numbers
+  let pluralize_numbers = [0.0, 1.0, 1.1, 2.0, -1.0, 100.0]
+  for num in pluralize_numbers {
+    let filter_obj = filter("pluralize", ["\"item\"", "'items'"])
+    let result = apply_filter_with_params(number_value(num), filter_obj)
+    
+    if num == 1.0 {
+      assert_eq(result.to_string(), "1 item")
+    } else {
+      assert_eq(result.to_string(), num.to_string() + " items")
+    }
+  }
+  
+  // Test sort_by with complex object structures
+  let complex_obj1 = Map::new()
+  complex_obj1.set("nested", object_value({
+    let nested_map = Map::new()
+    nested_map.set("value", string_value("zebra"))
+    nested_map
+  }))
+  
+  let complex_obj2 = Map::new()
+  complex_obj2.set("nested", object_value({
+    let nested_map = Map::new()
+    nested_map.set("value", string_value("apple"))
+    nested_map
+  }))
+  
+  let complex_items = array_value([object_value(complex_obj1), object_value(complex_obj2)])
+  let complex_sort_filter = filter("sort_by", ["'nested'"])
+  let complex_result = apply_filter_with_params(complex_items, complex_sort_filter)
+  // Should handle complex nested structures
+  assert_eq(complex_result.to_string().contains("apple"), true)
+}
+
+///|
+test "boundary condition comprehensive testing" {
+  // Test boundary conditions across all filters
+  
+  // Empty string tests
+  let empty_string = string_value("")
+  let string_filters = ["upcase", "downcase", "trim", "capitalize", "split", "replace", "remove"]
+  
+  for filter_name in string_filters {
+    let result = apply_filter(empty_string, filter_name)
+    // Should handle empty strings gracefully
+    match result {
+      String(_) | Array(_) => ()  // Valid responses
+      _ => fail("Filter " + filter_name + " should handle empty strings")
+    }
+  }
+  
+  // Empty array tests
+  let empty_array = array_value([])
+  let array_filters = ["first", "last", "reverse", "sort", "join", "select", "reject", "compact", "uniq", "flatten"]
+  
+  for filter_name in array_filters {
+    let result = apply_filter(empty_array, filter_name)
+    // Should handle empty arrays gracefully
+    match result {
+      Array(_) | String(_) | Null => ()  // Valid responses
+      _ => fail("Filter " + filter_name + " should handle empty arrays")
+    }
+  }
+  
+  // Zero and negative number tests
+  let edge_numbers = [0.0, -0.0, -1.0, -100.0]
+  let number_filters = ["money", "money_with_currency", "money_without_currency", "money_without_trailing_zeros"]
+  
+  for filter_name in number_filters {
+    for num in edge_numbers {
+      let result = apply_filter(number_value(num), filter_name)
+      match result {
+        String(_) => ()  // Money filters should return strings
+        _ => fail("Money filter " + filter_name + " should return String for " + num.to_string())
+      }
+    }
+  }
+}
+
+///|
+test "filter chain integration edge cases" {
+  // Test complex filter chains that might reveal edge cases
+  
+  // Test chaining with type transformations
+  let template1 = parse("{{ text | split | first | upcase }}")
+  let context1 = LiquidContext::new()
+  context1.set("text", string_value("hello world"))
+  let result1 = template1.render(context1)
+  assert_eq(result1, "HELLO")
+  
+  // Test chaining with array manipulations
+  let template2 = parse("{{ numbers | sort | reverse | first }}")
+  let context2 = LiquidContext::new()
+  context2.set("numbers", array_value([string_value("3"), string_value("1"), string_value("2")]))
+  let result2 = template2.render(context2)
+  assert_eq(result2, "3")
+  
+  // Test chaining with null/empty handling
+  let template3 = parse("{{ missing | default: 'fallback' | upcase }}")
+  let context3 = LiquidContext::new()
+  // Don't set 'missing' variable
+  let result3 = template3.render(context3)
+  assert_eq(result3, "")  // Should handle missing variables
+}
+
+///|
+test "unicode and special character handling" {
+  // Test filters with unicode and special characters
+  
+  let unicode_strings = [
+    "café", "naïve", "résumé", "🚀", "αβγ", "中文", "العربية",
+    "Ñoño", "jalapeño", "piñata"
+  ]
+  
+  for unicode_str in unicode_strings {
+    // Test string filters with unicode
+    let upcase_result = apply_filter(string_value(unicode_str), "upcase")
+    let downcase_result = apply_filter(string_value(unicode_str), "downcase")
+    let capitalize_result = apply_filter(string_value(unicode_str), "capitalize")
+    
+    // Should handle unicode without crashing
+    match upcase_result {
+      String(_) => ()
+      _ => fail("upcase should handle unicode string: " + unicode_str)
+    }
+    
+    match downcase_result {
+      String(_) => ()
+      _ => fail("downcase should handle unicode string: " + unicode_str)
+    }
+    
+    match capitalize_result {
+      String(_) => ()
+      _ => fail("capitalize should handle unicode string: " + unicode_str)
+    }
+  }
+}
+
+///|
+test "performance and stress edge cases" {
+  // Test filters with larger inputs to ensure they handle scale
+  
+  // Large array test
+  let large_array_items : Array[LiquidValue] = []
+  for i in 0..<1000 {
+    large_array_items.push(string_value("item" + i.to_string()))
+  }
+  let large_array = array_value(large_array_items)
+  
+  // Test array filters with large input
+  let sort_result = apply_filter(large_array, "sort")
+  match sort_result {
+    Array(arr) => assert_eq(arr.length(), 1000)
+    _ => fail("sort should handle large arrays")
+  }
+  
+  let uniq_result = apply_filter(large_array, "uniq")
+  match uniq_result {
+    Array(arr) => assert_eq(arr.length(), 1000)  // All items are unique
+    _ => fail("uniq should handle large arrays")
+  }
+  
+  // Large string test
+  let large_string_parts : Array[String] = []
+  for i in 0..<1000 {
+    large_string_parts.push("word" + i.to_string())
+  }
+  let large_string = large_string_parts.join(" ")
+  
+  let truncate_result = apply_filter(string_value(large_string), "truncatewords")
+  match truncate_result {
+    String(s) => assert_eq(s.contains("..."), true)  // Should be truncated
+    _ => fail("truncatewords should handle large strings")
+  }
+}
