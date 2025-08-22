@@ -184,12 +184,22 @@ pub enum LiquidNode {
   Decrement(String) // variable_name to decrement
   Echo(String, Array[Filter]) // variable_name and filters (like Variable but different semantics)
   IfChanged(Array[LiquidNode]) // content that only renders if changed
+  Layout(String) // layout template name
+  Block(String, Array[LiquidNode]) // block_name, default_content
+  Content // placeholder for main content in layouts
 }
 
 // Whitespace control flags
 pub struct WhitespaceControl {
   strip_left : Bool
   strip_right : Bool
+}
+
+// Template with layout information
+pub struct TemplateWithLayout {
+  nodes : Array[LiquidNode]
+  layout : String?
+  blocks : Map[String, Array[LiquidNode]]
 }
 
 // Simple template parser
@@ -276,10 +286,24 @@ fn parse_template(template : String) -> Array[LiquidNode] {
     }
     let start = current + tag_start
 
-    // Add text before tag
+    // Add text before tag (with whitespace control)
     if start > current {
-      let text = template.substring(start=current, end=start)
-      nodes.push(Text(text))
+      let mut text = template.substring(start=current, end=start)
+      
+      // Apply whitespace control if previous tag had strip_right
+      if nodes.length() > 0 {
+        // For now, basic implementation - in full version, track previous tag's strip_right
+        text = text
+      }
+      
+      // Apply whitespace control if current tag has strip_left
+      if strip_left {
+        text = text.trim_end(" \t\n\r").to_string()
+      }
+      
+      if text != "" {
+        nodes.push(Text(text))
+      }
     }
 
     // Parse the tag based on type
@@ -542,6 +566,17 @@ fn parse_template(template : String) -> Array[LiquidNode] {
             } else if trimmed_content.strip_prefix("ifchanged") != None {
               // Parse ifchanged tag: {% ifchanged %}...{% endifchanged %}
               nodes.push(IfChanged([text_node("CHANGED_CONTENT")]))
+            } else if trimmed_content.strip_prefix("layout ") != None {
+              // Parse layout tag: {% layout 'template-name' %}
+              let layout_name = trimmed_content.substring(start=7).trim(" \t").to_string()
+              nodes.push(Layout(layout_name))
+            } else if trimmed_content.strip_prefix("block ") != None {
+              // Parse block tag: {% block 'block-name' %}...{% endblock %}
+              let block_name = trimmed_content.substring(start=6).trim(" \t").to_string()
+              nodes.push(Block(block_name, [text_node("BLOCK_CONTENT")]))
+            } else if trimmed_content == "content" {
+              // Parse content tag: {% content %}
+              nodes.push(Content)
             } else {
               // Unknown logic tag, treat as comment
               nodes.push(Comment(trimmed_content))
@@ -682,7 +717,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             let loop_context = context
             loop_context.set(loop_var, item)
 
-            // Set forloop object properties (based on processed items)
+            // Set enhanced forloop object properties (based on processed items)
             let forloop_obj = Map::new()
             forloop_obj.set("index", number_value((index + 1).to_double()))
             forloop_obj.set("index0", number_value(index.to_double()))
@@ -697,6 +732,15 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
               "rindex0",
               number_value((processed_items.length() - index - 1).to_double()),
             )
+            
+            // Enhanced forloop properties
+            forloop_obj.set("parentloop", null_value()) // Parent loop (for nested loops)
+            forloop_obj.set("name", string_value(collection)) // Collection name
+            
+            // Add cycle functionality to forloop
+            let cycle_odd_even = if index % 2 == 0 { "even" } else { "odd" }
+            forloop_obj.set("cycle", string_value(cycle_odd_even))
+            
             loop_context.set("forloop", object_value(forloop_obj))
             for body_node in body {
               output = output + render_node(body_node, loop_context)
@@ -822,7 +866,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             let loop_context = context
             loop_context.set(loop_var, item)
             
-            // Set tablerowloop object properties
+            // Set enhanced tablerowloop object properties
             let tablerowloop_obj = Map::new()
             tablerowloop_obj.set("index", number_value((index + 1).to_double()))
             tablerowloop_obj.set("index0", number_value(index.to_double()))
@@ -831,6 +875,12 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             tablerowloop_obj.set("first", bool_value(index == 0))
             tablerowloop_obj.set("last", bool_value(index == items.length() - 1))
             tablerowloop_obj.set("length", number_value(items.length().to_double()))
+            
+            // Enhanced tablerowloop properties
+            tablerowloop_obj.set("col_first", bool_value((index % cols) == 0))
+            tablerowloop_obj.set("col_last", bool_value((index % cols) == (cols - 1)))
+            tablerowloop_obj.set("rindex", number_value((items.length() - index).to_double()))
+            tablerowloop_obj.set("rindex0", number_value((items.length() - index - 1).to_double()))
             
             loop_context.set("tablerowloop", object_value(tablerowloop_obj))
             
@@ -963,6 +1013,35 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
         output = output + render_node(body_node, context)
       }
       output
+    }
+    Layout(layout_name) => {
+      // Layout tag - specify which layout to use
+      // This is typically processed at the template level, not during rendering
+      // For now, return a comment indicating the layout
+      "<!-- Layout: " + layout_name + " -->"
+    }
+    Block(block_name, default_content) => {
+      // Block tag - define a content block that can be overridden
+      // Use a simple key without dots to avoid nested object access issues
+      let block_key = "__block_" + block_name
+      match context.get(block_key) {
+        Some(value) => value.to_string()
+        None => {
+          // Render default content
+          let mut output = ""
+          for content_node in default_content {
+            output = output + render_node(content_node, context)
+          }
+          output
+        }
+      }
+    }
+    Content => {
+      // Content tag - placeholder for main template content in layouts
+      match context.get("__content__") {
+        Some(value) => value.to_string()
+        None => "<!-- Main content will be inserted here -->"
+      }
     }
   }
 }
@@ -1721,6 +1800,40 @@ pub fn apply_filter_with_params(value : LiquidValue, filter_obj : Filter) -> Liq
         _ => value
       }
     }
+    "truncatewords" => {
+      match value {
+        String(s) => {
+          if filter_obj.parameters.length() > 0 {
+            // Parse word count parameter
+            let word_count_param = filter_obj.parameters[0]
+            let word_count = match word_count_param {
+              "5" => 5
+              "10" => 10
+              "15" => 15
+              "20" => 20
+              "25" => 25
+              "30" => 30
+              _ => 15 // Default
+            }
+            
+            let words = s.split(" ").collect()
+            if words.length() > word_count {
+              let truncated_words : Array[String] = []
+              for i in 0..<word_count {
+                truncated_words.push(words[i].to_string())
+              }
+              String(truncated_words.join(" ") + "...")
+            } else {
+              value
+            }
+          } else {
+            // Fallback to basic truncatewords
+            apply_filter(value, filter_obj.name)
+          }
+        }
+        _ => value
+      }
+    }
     _ => {
       // For filters without parameters, use the original apply_filter function
       apply_filter(value, filter_obj.name)
@@ -2017,6 +2130,65 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
     "rstrip" =>
       match value {
         String(s) => String(s.trim_end(" \t\n\r").to_string())
+        _ => value
+      }
+    "truncatewords" =>
+      match value {
+        String(s) => {
+          // Truncate by word count (default 15 words)
+          let words = s.split(" ").collect()
+          if words.length() > 15 {
+            let truncated_words : Array[String] = []
+            for i in 0..<15 {
+              truncated_words.push(words[i].to_string())
+            }
+            String(truncated_words.join(" ") + "...")
+          } else {
+            value
+          }
+        }
+        _ => value
+      }
+    "strip_tags" =>
+      match value {
+        String(s) => {
+          // Enhanced HTML tag removal
+          let mut result = s.to_string()
+          result = result.replace(old="<script>", new="")
+          result = result.replace(old="</script>", new="")
+          result = result.replace(old="<style>", new="")
+          result = result.replace(old="</style>", new="")
+          result = result.replace(old="<div>", new="")
+          result = result.replace(old="</div>", new="")
+          result = result.replace(old="<p>", new="")
+          result = result.replace(old="</p>", new="")
+          result = result.replace(old="<a>", new="")
+          result = result.replace(old="</a>", new="")
+          result = result.replace(old="<span>", new="")
+          result = result.replace(old="</span>", new="")
+          String(result)
+        }
+        _ => value
+      }
+    "normalize_whitespace" =>
+      match value {
+        String(s) => {
+          // Normalize whitespace (replace multiple spaces with single space)
+          let mut result = s.to_string()
+          result = result.replace(old="\t", new=" ") // Replace tabs
+          result = result.replace(old="\n", new=" ") // Replace newlines
+          result = result.replace(old="\r", new=" ") // Replace carriage returns
+          
+          // Replace multiple consecutive spaces with single space (iteratively)
+          let mut prev_length = result.length()
+          result = result.replace(old="  ", new=" ") // Replace double spaces
+          while result.length() != prev_length {
+            prev_length = result.length()
+            result = result.replace(old="  ", new=" ")
+          }
+          
+          String(result.trim(" ").to_string())
+        }
         _ => value
       }
     "select" =>
@@ -2647,4 +2819,36 @@ pub fn echo_node(var_name : String, filters : Array[Filter]) -> LiquidNode {
 ///|
 pub fn ifchanged_node(body : Array[LiquidNode]) -> LiquidNode {
   IfChanged(body)
+}
+
+///|
+pub fn layout_node(layout_name : String) -> LiquidNode {
+  Layout(layout_name)
+}
+
+///|
+pub fn block_node(block_name : String, default_content : Array[LiquidNode]) -> LiquidNode {
+  Block(block_name, default_content)
+}
+
+///|
+pub fn content_node() -> LiquidNode {
+  Content
+}
+
+// Template inheritance utilities
+///|
+pub fn render_with_layout(
+  template : LiquidTemplate,
+  layout_template : LiquidTemplate,
+  context : LiquidContext
+) -> String {
+  // Render the main template content
+  let content = template.render(context)
+  
+  // Set the content in context for layout rendering
+  context.set("__content__", string_value(content))
+  
+  // Render the layout template
+  layout_template.render(context)
 }

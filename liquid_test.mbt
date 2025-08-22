@@ -4846,3 +4846,262 @@ test "map filter with mixed array types" {
     _ => fail("Expected Array result")
   }
 }
+
+///|
+test "layout system basic functionality" {
+  // Test layout tag parsing and rendering
+  let layout_test = layout_node("base")
+  let context = LiquidContext::new()
+  let result = render_node(layout_test, context)
+  assert_eq(result, "<!-- Layout: base -->")
+}
+
+///|
+test "block system functionality" {
+  // Test block tag with default content
+  let context = LiquidContext::new()
+  let block_test = block_node("header", [text_node("Default Header")])
+  let result = render_node(block_test, context)
+  assert_eq(result, "Default Header")
+  
+  // Test block with override content
+  context.set("__block_header", string_value("Custom Header"))
+  let result_override = render_node(block_test, context)
+  assert_eq(result_override, "Custom Header")
+}
+
+///|
+test "content placeholder functionality" {
+  // Test content placeholder
+  let context = LiquidContext::new()
+  let content_test = content_node()
+  
+  // Without content set
+  let result_empty = render_node(content_test, context)
+  assert_eq(result_empty, "<!-- Main content will be inserted here -->")
+  
+  // With content set
+  context.set("__content__", string_value("Main page content"))
+  let result_with_content = render_node(content_test, context)
+  assert_eq(result_with_content, "Main page content")
+}
+
+///|
+test "template inheritance with layout" {
+  // Test complete template inheritance workflow
+  let main_template = LiquidTemplate::new()
+  main_template.nodes.push(text_node("Hello World"))
+  
+  let layout_template = LiquidTemplate::new()
+  layout_template.nodes.push(text_node("<html><body>"))
+  layout_template.nodes.push(content_node())
+  layout_template.nodes.push(text_node("</body></html>"))
+  
+  let context = LiquidContext::new()
+  let result = render_with_layout(main_template, layout_template, context)
+  assert_eq(result, "<html><body>Hello World</body></html>")
+}
+
+///|
+test "enhanced forloop properties" {
+  // Test enhanced forloop object properties
+  let context = LiquidContext::new()
+  let items = array_value([string_value("a"), string_value("b"), string_value("c")])
+  context.set("items", items)
+  
+  let for_test = for_node("item", "items", [
+    variable_node("forloop.cycle", []),
+    text_node(" "),
+    variable_node("forloop.name", []),
+    text_node(" "),
+    variable_node("item", []),
+    text_node(" ")
+  ])
+  
+  let result = render_node(for_test, context)
+  // Should show cycle (odd/even) and collection name
+  assert_eq(result.contains("items"), true) // Collection name
+  assert_eq(result.contains("odd"), true)   // First iteration is odd
+  assert_eq(result.contains("even"), true)  // Second iteration is even
+}
+
+///|
+test "enhanced tablerowloop properties" {
+  // Test enhanced tablerowloop object properties
+  let context = LiquidContext::new()
+  let items = array_value([
+    string_value("a"), string_value("b"), 
+    string_value("c"), string_value("d")
+  ])
+  context.set("items", items)
+  
+  let tablerow_test = tablerow_node("item", "items", [
+    variable_node("tablerowloop.col_first", []),
+    text_node(" "),
+    variable_node("tablerowloop.col_last", []),
+    text_node(" "),
+    variable_node("tablerowloop.rindex", []),
+    text_node(" ")
+  ], 2)
+  
+  let result = render_node(tablerow_test, context)
+  // Should show column first/last indicators and reverse index
+  assert_eq(result.contains("true"), true)  // col_first for first column
+  assert_eq(result.contains("false"), true) // col_last for first column
+  assert_eq(result.contains("4"), true)     // rindex for first item
+}
+
+///|
+test "template parsing with layout tags" {
+  // Test parsing of layout-related tags
+  let template_layout = parse("{% layout 'base' %}")
+  assert_eq(template_layout.nodes.length(), 1)
+  match template_layout.nodes[0] {
+    Layout(layout_name) => assert_eq(layout_name, "'base'")
+    _ => fail("Expected Layout node")
+  }
+  
+  let template_block = parse("{% block 'header' %}")
+  assert_eq(template_block.nodes.length(), 1)
+  match template_block.nodes[0] {
+    Block(block_name, content) => {
+      assert_eq(block_name, "'header'")
+      assert_eq(content.length(), 1) // Should have default content
+    }
+    _ => fail("Expected Block node")
+  }
+  
+  let template_content = parse("{% content %}")
+  assert_eq(template_content.nodes.length(), 1)
+  match template_content.nodes[0] {
+    Content => () // Success
+    _ => fail("Expected Content node")
+  }
+}
+
+///|
+test "additional advanced filters" {
+  // Test truncatewords filter
+  let long_text = string_value("This is a very long sentence with many words that should be truncated at word boundaries")
+  let result_truncatewords = apply_filter(long_text, "truncatewords")
+  assert_eq(result_truncatewords.to_string().contains("..."), true) // Should be truncated
+  
+  // Test strip_tags filter (enhanced version)
+  let html_text = string_value("<div><p>Hello <a href='#'>world</a></p></div>")
+  let result_strip_tags = apply_filter(html_text, "strip_tags")
+  // The basic implementation removes some tags but not all complex ones
+  assert_eq(result_strip_tags.to_string().contains("Hello"), true)
+  assert_eq(result_strip_tags.to_string().contains("world"), true)
+  
+  // Test normalize_whitespace filter
+  let messy_text = string_value("  Hello   \t world  \n  test  ")
+  let result_normalize = apply_filter(messy_text, "normalize_whitespace")
+  assert_eq(result_normalize.to_string(), "Hello world test") // Normalized spaces
+}
+
+///|
+test "truncatewords filter with parameters" {
+  // Test truncatewords filter with custom word count
+  let text = string_value("One two three four five six seven eight nine ten eleven twelve")
+  
+  // Test with 5 words parameter
+  let filter_5 = filter("truncatewords", ["5"])
+  let result_5 = apply_filter_with_params(text, filter_5)
+  assert_eq(result_5.to_string(), "One two three four five...")
+  
+  // Test with 10 words parameter
+  let filter_10 = filter("truncatewords", ["10"])
+  let result_10 = apply_filter_with_params(text, filter_10)
+  assert_eq(result_10.to_string(), "One two three four five six seven eight nine ten...")
+  
+  // Test with text shorter than limit
+  let short_text = string_value("Just three words")
+  let result_short = apply_filter_with_params(short_text, filter_10)
+  assert_eq(result_short.to_string(), "Just three words") // No truncation needed
+}
+
+///|
+test "enhanced liquid drops comprehensive" {
+  // Test all enhanced forloop properties
+  let context = LiquidContext::new()
+  let items = array_value([string_value("first"), string_value("second")])
+  context.set("test_items", items)
+  
+  let for_test = for_node("item", "test_items", [
+    text_node("Index: "),
+    variable_node("forloop.index", []),
+    text_node(", Cycle: "),
+    variable_node("forloop.cycle", []),
+    text_node(", Name: "),
+    variable_node("forloop.name", []),
+    text_node(", ParentLoop: "),
+    variable_node("forloop.parentloop", []),
+    text_node(" | ")
+  ])
+  
+  let result = render_node(for_test, context)
+  assert_eq(result.contains("Index: 1"), true)
+  assert_eq(result.contains("Cycle: odd"), true)
+  assert_eq(result.contains("Name: test_items"), true)
+  assert_eq(result.contains("ParentLoop: null"), true)
+  assert_eq(result.contains("Index: 2"), true)
+  assert_eq(result.contains("Cycle: even"), true)
+}
+
+///|
+test "enhanced tablerowloop comprehensive" {
+  // Test all enhanced tablerowloop properties
+  let context = LiquidContext::new()
+  let items = array_value([
+    string_value("a"), string_value("b"), 
+    string_value("c"), string_value("d")
+  ])
+  context.set("items", items)
+  
+  let tablerow_test = tablerow_node("item", "items", [
+    text_node("Col: "),
+    variable_node("tablerowloop.col", []),
+    text_node(", ColFirst: "),
+    variable_node("tablerowloop.col_first", []),
+    text_node(", ColLast: "),
+    variable_node("tablerowloop.col_last", []),
+    text_node(", RIndex: "),
+    variable_node("tablerowloop.rindex", []),
+    text_node(" | ")
+  ], 2)
+  
+  let result = render_node(tablerow_test, context)
+  // Should show enhanced column and index properties
+  assert_eq(result.contains("Col: 1"), true)      // First column
+  assert_eq(result.contains("ColFirst: true"), true)  // First in row
+  assert_eq(result.contains("ColLast: false"), true)  // Not last in row
+  assert_eq(result.contains("RIndex: 4"), true)   // Reverse index
+  assert_eq(result.contains("Col: 2"), true)      // Second column
+  assert_eq(result.contains("ColLast: true"), true)   // Last in row
+}
+
+///|
+test "layout and block integration" {
+  // Test layout and block working together
+  let context = LiquidContext::new()
+  
+  // Create a template with blocks
+  let page_template = LiquidTemplate::new()
+  page_template.nodes.push(text_node("Page: "))
+  page_template.nodes.push(block_node("title", [text_node("Default Title")]))
+  
+  // Create layout template
+  let layout_template = LiquidTemplate::new()
+  layout_template.nodes.push(text_node("<html><head><title>"))
+  layout_template.nodes.push(content_node())
+  layout_template.nodes.push(text_node("</title></head></html>"))
+  
+  // Test with default block content
+  let result_default = render_with_layout(page_template, layout_template, context)
+  assert_eq(result_default, "<html><head><title>Page: Default Title</title></head></html>")
+  
+  // Test with custom block content
+  context.set("__block_title", string_value("Custom Page Title"))
+  let result_custom = render_with_layout(page_template, layout_template, context)
+  assert_eq(result_custom, "<html><head><title>Page: Custom Page Title</title></head></html>")
+}
