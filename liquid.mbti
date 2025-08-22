@@ -4,19 +4,55 @@ package "bobzhang/liquid"
 // Values
 fn apply_filter(LiquidValue, String) -> LiquidValue
 
+fn apply_filter_with_params(LiquidValue, Filter) -> LiquidValue
+
 fn array_value(Array[LiquidValue]) -> LiquidValue
+
+fn block_node(String, Array[LiquidNode]) -> LiquidNode
 
 fn bool_value(Bool) -> LiquidValue
 
+fn break_node() -> LiquidNode
+
+fn capture_node(String, Array[LiquidNode]) -> LiquidNode
+
 fn case_node(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?) -> LiquidNode
+
+fn content_node() -> LiquidNode
+
+fn continue_node() -> LiquidNode
+
+fn cycle_node(String, Array[String]) -> LiquidNode
+
+fn decrement_node(String) -> LiquidNode
+
+fn echo_node(String, Array[Filter]) -> LiquidNode
 
 fn evaluate_condition(String, LiquidContext) -> Bool
 
 fn evaluate_expression(String, LiquidContext) -> LiquidValue
 
+fn filter(String, Array[String]) -> Filter
+
+fn for_loop_modifiers(Int?, Int?, Bool) -> ForLoopModifiers
+
 fn for_node(String, String, Array[LiquidNode]) -> LiquidNode
 
+fn for_node_with_modifiers(String, String, Array[LiquidNode], ForLoopModifiers) -> LiquidNode
+
 fn if_node(String, Array[LiquidNode], Array[LiquidNode]?) -> LiquidNode
+
+fn if_node_with_elsif(String, Array[LiquidNode], Array[(String, Array[LiquidNode])], Array[LiquidNode]?) -> LiquidNode
+
+fn ifchanged_node(Array[LiquidNode]) -> LiquidNode
+
+fn include_node(String) -> LiquidNode
+
+fn increment_node(String) -> LiquidNode
+
+fn layout_node(String) -> LiquidNode
+
+fn liquid_node(Array[LiquidNode]) -> LiquidNode
 
 fn null_value() -> LiquidValue
 
@@ -26,7 +62,15 @@ fn object_value(Map[String, LiquidValue]) -> LiquidValue
 
 fn parse(String) -> LiquidTemplate
 
+fn raw_node(String) -> LiquidNode
+
 fn render_node(LiquidNode, LiquidContext) -> String
+
+fn render_node_tag(String) -> LiquidNode
+
+fn render_with_layout(LiquidTemplate, LiquidTemplate, LiquidContext) -> String
+
+fn section_node(String) -> LiquidNode
 
 fn silent_policy() -> ErrorPolicy
 
@@ -34,11 +78,17 @@ fn strict_policy() -> ErrorPolicy
 
 fn string_value(String) -> LiquidValue
 
+fn style_node(String) -> LiquidNode
+
+fn tablerow_node(String, String, Array[LiquidNode], Int) -> LiquidNode
+
 fn text_node(String) -> LiquidNode
 
 fn unless_node(String, Array[LiquidNode]) -> LiquidNode
 
-fn variable_node(String, Array[String]) -> LiquidNode
+fn variable_node(String, Array[Filter]) -> LiquidNode
+
+fn variable_node_simple(String, Array[String]) -> LiquidNode
 
 fn warn_policy() -> ErrorPolicy
 
@@ -50,6 +100,20 @@ pub enum ErrorPolicy {
   Warn
   Silent
 }
+impl ToJson for ErrorPolicy
+
+pub struct Filter {
+  name : String
+  parameters : Array[String]
+}
+impl ToJson for Filter
+
+pub struct ForLoopModifiers {
+  limit : Int?
+  offset : Int?
+  reversed : Bool
+}
+impl ToJson for ForLoopModifiers
 
 pub struct LiquidContext {
   variables : Map[String, LiquidValue]
@@ -59,23 +123,44 @@ fn LiquidContext::get(Self, String) -> LiquidValue?
 fn LiquidContext::new() -> Self
 fn LiquidContext::set(Self, String, LiquidValue) -> Unit
 fn LiquidContext::with_error_policy(ErrorPolicy) -> Self
+impl ToJson for LiquidContext
 
 pub enum LiquidNode {
   Text(String)
-  Variable(String, Array[String])
-  For(String, String, Array[LiquidNode])
-  If(String, Array[LiquidNode], Array[LiquidNode]?)
+  Variable(String, Array[Filter])
+  For(String, String, Array[LiquidNode], ForLoopModifiers)
+  If(String, Array[LiquidNode], Array[(String, Array[LiquidNode])], Array[LiquidNode]?)
   Unless(String, Array[LiquidNode])
   Case(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?)
   Assign(String, String)
   Comment(String)
+  Cycle(String, Array[String])
+  TableRow(String, String, Array[LiquidNode], Int)
+  Break
+  Continue
+  Liquid(Array[LiquidNode])
+  Section(String)
+  Style(String)
+  Include(String)
+  Render(String)
+  Capture(String, Array[LiquidNode])
+  Raw(String)
+  Increment(String)
+  Decrement(String)
+  Echo(String, Array[Filter])
+  IfChanged(Array[LiquidNode])
+  Layout(String)
+  Block(String, Array[LiquidNode])
+  Content
 }
+impl ToJson for LiquidNode
 
 pub struct LiquidTemplate {
   nodes : Array[LiquidNode]
 }
 fn LiquidTemplate::new() -> Self
 fn LiquidTemplate::render(Self, LiquidContext) -> String
+impl ToJson for LiquidTemplate
 
 pub enum LiquidValue {
   String(String)
@@ -86,6 +171,20 @@ pub enum LiquidValue {
   Null
 }
 fn LiquidValue::to_string(Self) -> String
+impl ToJson for LiquidValue
+
+pub struct TemplateWithLayout {
+  nodes : Array[LiquidNode]
+  layout : String?
+  blocks : Map[String, Array[LiquidNode]]
+}
+impl ToJson for TemplateWithLayout
+
+pub struct WhitespaceControl {
+  strip_left : Bool
+  strip_right : Bool
+}
+impl ToJson for WhitespaceControl
 
 // Type aliases
 
