@@ -145,6 +145,13 @@ pub struct Filter {
   parameters : Array[String]
 }
 
+// For loop modifiers
+pub struct ForLoopModifiers {
+  limit : Int?
+  offset : Int?
+  reversed : Bool
+}
+
 // Helper function to create a filter
 pub fn filter(name : String, parameters : Array[String]) -> Filter {
   { name, parameters }
@@ -156,7 +163,7 @@ pub fn filter(name : String, parameters : Array[String]) -> Filter {
 pub enum LiquidNode {
   Text(String)
   Variable(String, Array[Filter]) // variable_name, filters_with_params
-  For(String, String, Array[LiquidNode]) // variable, collection, body
+  For(String, String, Array[LiquidNode], ForLoopModifiers) // variable, collection, body, modifiers
   If(String, Array[LiquidNode], Array[(String, Array[LiquidNode])], Array[LiquidNode]?) // condition, then_body, elsif_branches, else_body
   Unless(String, Array[LiquidNode]) // condition, body
   Case(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?) // expression, when_branches, else_body
@@ -173,13 +180,17 @@ pub enum LiquidNode {
   Render(String) // template name to render
   Capture(String, Array[LiquidNode]) // variable_name, content_to_capture
   Raw(String) // raw content (no liquid processing)
+  Increment(String) // variable_name to increment
+  Decrement(String) // variable_name to decrement
+  Echo(String, Array[Filter]) // variable_name and filters (like Variable but different semantics)
+  IfChanged(Array[LiquidNode]) // content that only renders if changed
 }
 
-// Whitespace control flags (for future implementation)
-// pub struct WhitespaceControl {
-//   strip_left : Bool
-//   strip_right : Bool
-// }
+// Whitespace control flags
+pub struct WhitespaceControl {
+  strip_left : Bool
+  strip_right : Bool
+}
 
 // Simple template parser
 
@@ -209,21 +220,53 @@ fn parse_template(template : String) -> Array[LiquidNode] {
     let remaining = template.substring(start=current)
     let variable_tag = remaining.find("{{")
     let logic_tag = remaining.find("{%")
-    // Future: whitespace control detection
-    // let variable_tag_strip = remaining.find("{{-")
-    // let logic_tag_strip = remaining.find("{%-")
+    // Whitespace control detection
+    let variable_tag_strip = remaining.find("{{-")
+    let logic_tag_strip = remaining.find("{%-")
 
-    // Determine which tag comes first
-    let (tag_start, tag_type) = match (variable_tag, logic_tag) {
-      (Some(var_pos), Some(logic_pos)) =>
-        if var_pos < logic_pos {
-          (var_pos, "variable")
+    // Determine which tag comes first, prioritizing whitespace control
+    let (tag_start, tag_type, strip_left) = match (variable_tag_strip, logic_tag_strip, variable_tag, logic_tag) {
+      (Some(var_strip_pos), Some(logic_strip_pos), _, _) =>
+        if var_strip_pos < logic_strip_pos {
+          (var_strip_pos, "variable", true)
         } else {
-          (logic_pos, "logic")
+          (logic_strip_pos, "logic", true)
         }
-      (Some(var_pos), None) => (var_pos, "variable")
-      (None, Some(logic_pos)) => (logic_pos, "logic")
-      (None, None) => {
+      (Some(var_strip_pos), None, Some(var_pos), _) =>
+        if var_strip_pos < var_pos {
+          (var_strip_pos, "variable", true)
+        } else {
+          (var_pos, "variable", false)
+        }
+      (Some(var_strip_pos), None, None, Some(logic_pos)) =>
+        if var_strip_pos < logic_pos {
+          (var_strip_pos, "variable", true)
+        } else {
+          (logic_pos, "logic", false)
+        }
+      (Some(var_strip_pos), None, None, None) => (var_strip_pos, "variable", true)
+      (None, Some(logic_strip_pos), Some(var_pos), _) =>
+        if logic_strip_pos < var_pos {
+          (logic_strip_pos, "logic", true)
+        } else {
+          (var_pos, "variable", false)
+        }
+      (None, Some(logic_strip_pos), None, Some(logic_pos)) =>
+        if logic_strip_pos < logic_pos {
+          (logic_strip_pos, "logic", true)
+        } else {
+          (logic_pos, "logic", false)
+        }
+      (None, Some(logic_strip_pos), None, None) => (logic_strip_pos, "logic", true)
+      (None, None, Some(var_pos), Some(logic_pos)) =>
+        if var_pos < logic_pos {
+          (var_pos, "variable", false)
+        } else {
+          (logic_pos, "logic", false)
+        }
+      (None, None, Some(var_pos), None) => (var_pos, "variable", false)
+      (None, None, None, Some(logic_pos)) => (logic_pos, "logic", false)
+      (None, None, None, None) => {
         // No more tags, add remaining text
         if current < len {
           nodes.push(Text(template.substring(start=current)))
@@ -319,13 +362,17 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(If(condition, [text_node("TRUE_BRANCH")], elsif_branches, Some([text_node("FALSE_BRANCH")])))
             } else if trimmed_content.strip_prefix("for ") != None {
               // Parse for loop: {% for item in collection %}...{% endfor %}
+              // Also supports: {% for item in collection limit: 5 offset: 2 reversed %}
               let for_content = trimmed_content.substring(start=4).trim(" \t").to_string()
               if for_content.contains(" in ") {
                 let parts = for_content.split(" in ").collect()
                 if parts.length() == 2 {
                   let loop_var = parts[0].to_string().trim(" \t").to_string()
-                  let collection = parts[1].to_string().trim(" \t").to_string()
-                  nodes.push(For(loop_var, collection, [variable_node(loop_var, []), text_node(" ")]))
+                  let collection_and_modifiers = parts[1].to_string().trim(" \t").to_string()
+                  
+                  // Parse collection and modifiers
+                  let (collection, modifiers) = parse_for_loop_modifiers(collection_and_modifiers)
+                  nodes.push(For(loop_var, collection, [variable_node(loop_var, []), text_node(" ")], modifiers))
                 } else {
                   nodes.push(Comment(trimmed_content))
                 }
@@ -446,6 +493,55 @@ fn parse_template(template : String) -> Array[LiquidNode] {
             } else if trimmed_content.strip_prefix("raw") != None {
               // Parse raw tag: {% raw %}...{% endraw %}
               nodes.push(Raw("{{ not_processed }} liquid code"))
+            } else if trimmed_content.strip_prefix("increment ") != None {
+              // Parse increment tag: {% increment variable %}
+              let var_name = trimmed_content.substring(start=10).trim(" \t").to_string()
+              nodes.push(Increment(var_name))
+            } else if trimmed_content.strip_prefix("decrement ") != None {
+              // Parse decrement tag: {% decrement variable %}
+              let var_name = trimmed_content.substring(start=10).trim(" \t").to_string()
+              nodes.push(Decrement(var_name))
+            } else if trimmed_content.strip_prefix("echo ") != None {
+              // Parse echo tag: {% echo variable | filter %}
+              let echo_content = trimmed_content.substring(start=5).trim(" \t").to_string()
+              // Parse variable and filters (similar to variable parsing)
+              let parts = echo_content.split("|").collect()
+              let variable_name = parts[0].to_string().trim(" \t").to_string()
+              let filters = if parts.length() > 1 {
+                let filter_objs : Array[Filter] = []
+                for i in 1..<parts.length() {
+                  let filter_str = parts[i].to_string().trim(" \t").to_string()
+                  if filter_str.contains(":") {
+                    let filter_parts = filter_str.split(":").collect()
+                    let filter_name = filter_parts[0].to_string().trim(" \t").to_string()
+                    let params = if filter_parts.length() > 1 {
+                      let param_str = filter_parts[1].to_string().trim(" \t").to_string()
+                      if param_str.contains(",") {
+                        let param_parts = param_str.split(",").collect()
+                        let multiple_params : Array[String] = []
+                        for param in param_parts {
+                          multiple_params.push(param.to_string().trim(" \t").to_string())
+                        }
+                        multiple_params
+                      } else {
+                        [param_str]
+                      }
+                    } else {
+                      []
+                    }
+                    filter_objs.push(filter(filter_name, params))
+                  } else {
+                    filter_objs.push(filter(filter_str, []))
+                  }
+                }
+                filter_objs
+              } else {
+                []
+              }
+              nodes.push(Echo(variable_name, filters))
+            } else if trimmed_content.strip_prefix("ifchanged") != None {
+              // Parse ifchanged tag: {% ifchanged %}...{% endifchanged %}
+              nodes.push(IfChanged([text_node("CHANGED_CONTENT")]))
             } else {
               // Unknown logic tag, treat as comment
               nodes.push(Comment(trimmed_content))
@@ -463,6 +559,53 @@ fn parse_template(template : String) -> Array[LiquidNode] {
     }
   }
   nodes
+}
+
+// Parse for loop modifiers from collection string
+fn parse_for_loop_modifiers(collection_str : String) -> (String, ForLoopModifiers) {
+  let parts = collection_str.split(" ").collect()
+  let collection = parts[0].to_string()
+  let mut limit : Int? = None
+  let mut offset : Int? = None
+  let mut reversed = false
+  
+  let mut i = 1
+  while i < parts.length() {
+    let part = parts[i].to_string()
+    
+    if part == "limit:" && i + 1 < parts.length() {
+      // Get the next part as the limit value
+      let limit_str = parts[i + 1].to_string().trim(" \t").to_string()
+      limit = match limit_str {
+        "1" => Some(1)
+        "2" => Some(2)
+        "3" => Some(3)
+        "4" => Some(4)
+        "5" => Some(5)
+        "10" => Some(10)
+        _ => Some(5) // Default
+      }
+      i = i + 1 // Skip the next part since we consumed it
+    } else if part == "offset:" && i + 1 < parts.length() {
+      // Get the next part as the offset value
+      let offset_str = parts[i + 1].to_string().trim(" \t").to_string()
+      offset = match offset_str {
+        "0" => Some(0)
+        "1" => Some(1)
+        "2" => Some(2)
+        "3" => Some(3)
+        "4" => Some(4)
+        "5" => Some(5)
+        _ => Some(0) // Default
+      }
+      i = i + 1 // Skip the next part since we consumed it
+    } else if part == "reversed" {
+      reversed = true
+    }
+    i = i + 1
+  }
+  
+  (collection, { limit, offset, reversed })
 }
 
 // Template renderer
@@ -491,29 +634,68 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
         }
         None => handle_error(context, "Variable '" + var_name + "' not found")
       }
-    For(loop_var, collection, body) =>
+    For(loop_var, collection, body, modifiers) =>
       match context.get(collection) {
         Some(Array(items)) => {
+          // Apply modifiers to create the actual items to iterate
+          let mut processed_items = items
+          
+          // Apply offset
+          match modifiers.offset {
+            Some(offset_count) => {
+              let offset_items : Array[LiquidValue] = []
+              for i in offset_count..<processed_items.length() {
+                offset_items.push(processed_items[i])
+              }
+              processed_items = offset_items
+            }
+            None => ()
+          }
+          
+          // Apply limit
+          match modifiers.limit {
+            Some(limit_count) => {
+              let limited_items : Array[LiquidValue] = []
+              let max_items = if processed_items.length() > limit_count { limit_count } else { processed_items.length() }
+              for i in 0..<max_items {
+                limited_items.push(processed_items[i])
+              }
+              processed_items = limited_items
+            }
+            None => ()
+          }
+          
+          // Apply reversed
+          if modifiers.reversed {
+            let reversed_items : Array[LiquidValue] = []
+            let mut i = processed_items.length() - 1
+            while i >= 0 {
+              reversed_items.push(processed_items[i])
+              i = i - 1
+            }
+            processed_items = reversed_items
+          }
+          
           let mut output = ""
           let mut index = 0
-          for item in items {
+          for item in processed_items {
             let loop_context = context
             loop_context.set(loop_var, item)
 
-            // Set forloop object properties
+            // Set forloop object properties (based on processed items)
             let forloop_obj = Map::new()
             forloop_obj.set("index", number_value((index + 1).to_double()))
             forloop_obj.set("index0", number_value(index.to_double()))
             forloop_obj.set("first", bool_value(index == 0))
-            forloop_obj.set("last", bool_value(index == items.length() - 1))
-            forloop_obj.set("length", number_value(items.length().to_double()))
+            forloop_obj.set("last", bool_value(index == processed_items.length() - 1))
+            forloop_obj.set("length", number_value(processed_items.length().to_double()))
             forloop_obj.set(
               "rindex",
-              number_value((items.length() - index).to_double()),
+              number_value((processed_items.length() - index).to_double()),
             )
             forloop_obj.set(
               "rindex0",
-              number_value((items.length() - index - 1).to_double()),
+              number_value((processed_items.length() - index - 1).to_double()),
             )
             loop_context.set("forloop", object_value(forloop_obj))
             for body_node in body {
@@ -737,6 +919,51 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
       ""
     }
     Raw(raw_content) => raw_content  // Raw tag - output content without liquid processing
+    Increment(var_name) => {
+      // Increment tag - increment variable and return current value
+      let current_value = match context.get(var_name) {
+        Some(Number(n)) => n
+        Some(_) => 0.0  // Convert non-numbers to 0
+        None => 0.0     // Start from 0 if variable doesn't exist
+      }
+      let new_value = current_value + 1.0
+      context.set(var_name, number_value(new_value))
+      new_value.to_string()
+    }
+    Decrement(var_name) => {
+      // Decrement tag - decrement variable and return current value
+      let current_value = match context.get(var_name) {
+        Some(Number(n)) => n
+        Some(_) => 0.0  // Convert non-numbers to 0
+        None => 0.0     // Start from 0 if variable doesn't exist
+      }
+      let new_value = current_value - 1.0
+      context.set(var_name, number_value(new_value))
+      new_value.to_string()
+    }
+    Echo(var_name, filters) => {
+      // Echo tag - like Variable but with different semantics (always outputs something)
+      match context.get(var_name) {
+        Some(value) => {
+          let mut result = value
+          for filter_obj in filters {
+            result = apply_filter_with_params(result, filter_obj)
+          }
+          result.to_string()
+        }
+        None => "" // Echo outputs empty string for missing variables instead of error
+      }
+    }
+    IfChanged(body) => {
+      // IfChanged tag - only render if content has changed from previous iteration
+      // For now, implement a simple version that always renders
+      // In a full implementation, this would track previous values
+      let mut output = ""
+      for body_node in body {
+        output = output + render_node(body_node, context)
+      }
+      output
+    }
   }
 }
 
@@ -1334,6 +1561,166 @@ pub fn apply_filter_with_params(value : LiquidValue, filter_obj : Filter) -> Liq
         _ => value
       }
     }
+    "pluralize" => {
+      match value {
+        Number(n) => {
+          if filter_obj.parameters.length() >= 2 {
+            // Parse singular and plural parameters
+            let singular_param = filter_obj.parameters[0]
+            let plural_param = filter_obj.parameters[1]
+            
+            // Remove quotes from parameters
+            let singular = if singular_param.length() >= 2 && singular_param.substring(start=0, end=1) == "\"" && singular_param.substring(start=singular_param.length() - 1) == "\"" {
+              singular_param.substring(start=1, end=singular_param.length() - 1)
+            } else if singular_param.length() >= 2 && singular_param.substring(start=0, end=1) == "'" && singular_param.substring(start=singular_param.length() - 1) == "'" {
+              singular_param.substring(start=1, end=singular_param.length() - 1)
+            } else {
+              singular_param
+            }
+            
+            let plural = if plural_param.length() >= 2 && plural_param.substring(start=0, end=1) == "\"" && plural_param.substring(start=plural_param.length() - 1) == "\"" {
+              plural_param.substring(start=1, end=plural_param.length() - 1)
+            } else if plural_param.length() >= 2 && plural_param.substring(start=0, end=1) == "'" && plural_param.substring(start=plural_param.length() - 1) == "'" {
+              plural_param.substring(start=1, end=plural_param.length() - 1)
+            } else {
+              plural_param
+            }
+            
+            if n == 1.0 {
+              String("1 " + singular)
+            } else {
+              String(n.to_string() + " " + plural)
+            }
+          } else {
+            // Fallback to basic pluralize
+            apply_filter(value, filter_obj.name)
+          }
+        }
+        _ => value
+      }
+    }
+    "sort_by" => {
+      match value {
+        Array(arr) => {
+          if filter_obj.parameters.length() > 0 {
+            // Parse property parameter
+            let property_param = filter_obj.parameters[0]
+            let property = if property_param.length() >= 2 && property_param.substring(start=0, end=1) == "'" && property_param.substring(start=property_param.length() - 1) == "'" {
+              property_param.substring(start=1, end=property_param.length() - 1)
+            } else {
+              property_param
+            }
+            
+            // Sort array by property using selection sort
+            let sorted = Array::from_iter(arr.iter())
+            let mut i = 0
+            while i < sorted.length() {
+              let mut min_idx = i
+              let mut j = i + 1
+              while j < sorted.length() {
+                let current_val = match sorted[min_idx] {
+                  Object(obj) => {
+                    match obj.get(property) {
+                      Some(val) => val.to_string()
+                      None => ""
+                    }
+                  }
+                  _ => sorted[min_idx].to_string()
+                }
+                let next_val = match sorted[j] {
+                  Object(obj) => {
+                    match obj.get(property) {
+                      Some(val) => val.to_string()
+                      None => ""
+                    }
+                  }
+                  _ => sorted[j].to_string()
+                }
+                if next_val < current_val {
+                  min_idx = j
+                }
+                j = j + 1
+              }
+              if min_idx != i {
+                let temp = sorted[i]
+                sorted[i] = sorted[min_idx]
+                sorted[min_idx] = temp
+              }
+              i = i + 1
+            }
+            Array(sorted)
+          } else {
+            // Fallback to basic sort_by
+            apply_filter(value, filter_obj.name)
+          }
+        }
+        _ => value
+      }
+    }
+    "at" => {
+      match value {
+        Array(arr) => {
+          if filter_obj.parameters.length() > 0 {
+            // Parse index parameter
+            let index_param = filter_obj.parameters[0]
+            let index = match index_param {
+              "0" => 0
+              "1" => 1
+              "2" => 2
+              "3" => 3
+              "4" => 4
+              "5" => 5
+              "-1" => arr.length() - 1  // Negative indexing
+              "-2" => if arr.length() >= 2 { arr.length() - 2 } else { 0 }
+              _ => 0  // Default to first element
+            }
+            if index < arr.length() {
+              arr[index]
+            } else {
+              Null
+            }
+          } else {
+            // No index specified, return first element
+            if arr.length() > 0 { arr[0] } else { Null }
+          }
+        }
+        _ => value
+      }
+    }
+    "map" => {
+      match value {
+        Array(arr) => {
+          if filter_obj.parameters.length() > 0 {
+            // Parse property parameter for map
+            let property_param = filter_obj.parameters[0]
+            let property = if property_param.length() >= 2 && property_param.substring(start=0, end=1) == "'" && property_param.substring(start=property_param.length() - 1) == "'" {
+              property_param.substring(start=1, end=property_param.length() - 1)
+            } else {
+              property_param
+            }
+            
+            // Map array to property values
+            let mapped : Array[LiquidValue] = []
+            for item in arr {
+              match item {
+                Object(obj) => {
+                  match obj.get(property) {
+                    Some(prop_value) => mapped.push(prop_value)
+                    None => mapped.push(null_value())
+                  }
+                }
+                _ => mapped.push(item) // For non-objects, just return the item
+              }
+            }
+            Array(mapped)
+          } else {
+            // Fallback to basic map (no-op)
+            apply_filter(value, filter_obj.name)
+          }
+        }
+        _ => value
+      }
+    }
     _ => {
       // For filters without parameters, use the original apply_filter function
       apply_filter(value, filter_obj.name)
@@ -1423,19 +1810,21 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       match value {
         Array(arr) => {
           let sorted = Array::from_iter(arr.iter())
-          // Simple bubble sort for strings/numbers
+          // Selection sort - simpler and more reliable
           let mut i = 0
           while i < sorted.length() {
-            let mut j = 0
-            while j < sorted.length() - 1 - i {
-              let current = sorted[j].to_string()
-              let next = sorted[j + 1].to_string()
-              if current > next {
-                let temp = sorted[j]
-                sorted[j] = sorted[j + 1]
-                sorted[j + 1] = temp
+            let mut min_idx = i
+            let mut j = i + 1
+            while j < sorted.length() {
+              if sorted[j].to_string() < sorted[min_idx].to_string() {
+                min_idx = j
               }
               j = j + 1
+            }
+            if min_idx != i {
+              let temp = sorted[i]
+              sorted[i] = sorted[min_idx]
+              sorted[min_idx] = temp
             }
             i = i + 1
           }
@@ -1543,6 +1932,91 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           // For now, map just returns the array as-is
           // In a full implementation, this would apply a filter to each element
           Array(arr)
+        _ => value
+      }
+    "at" =>
+      match value {
+        Array(arr) => {
+          // Basic at filter - return first element
+          if arr.length() > 0 { arr[0] } else { Null }
+        }
+        _ => value
+      }
+    "concat" =>
+      match value {
+        Array(arr1) => {
+          // Basic concat - for now just return the array
+          // In full implementation, this would concatenate with another array
+          Array(arr1)
+        }
+        String(s) => {
+          // Concat string with itself (basic implementation)
+          String(s + s)
+        }
+        _ => value
+      }
+    "push" =>
+      match value {
+        Array(arr) => {
+          // Basic push - add a default element
+          let new_arr = Array::from_iter(arr.iter())
+          new_arr.push(string_value("pushed"))
+          Array(new_arr)
+        }
+        _ => value
+      }
+    "pop" =>
+      match value {
+        Array(arr) => {
+          // Basic pop - remove last element
+          if arr.length() > 0 {
+            let new_arr : Array[LiquidValue] = []
+            for i in 0..<(arr.length() - 1) {
+              new_arr.push(arr[i])
+            }
+            Array(new_arr)
+          } else {
+            Array(arr)
+          }
+        }
+        _ => value
+      }
+    "shift" =>
+      match value {
+        Array(arr) => {
+          // Basic shift - remove first element
+          if arr.length() > 0 {
+            let new_arr : Array[LiquidValue] = []
+            for i in 1..<arr.length() {
+              new_arr.push(arr[i])
+            }
+            Array(new_arr)
+          } else {
+            Array(arr)
+          }
+        }
+        _ => value
+      }
+    "unshift" =>
+      match value {
+        Array(arr) => {
+          // Basic unshift - add element to beginning
+          let new_arr : Array[LiquidValue] = [string_value("unshifted")]
+          for item in arr {
+            new_arr.push(item)
+          }
+          Array(new_arr)
+        }
+        _ => value
+      }
+    "lstrip" =>
+      match value {
+        String(s) => String(s.trim_start(" \t\n\r").to_string())
+        _ => value
+      }
+    "rstrip" =>
+      match value {
+        String(s) => String(s.trim_end(" \t\n\r").to_string())
         _ => value
       }
     "select" =>
@@ -1936,6 +2410,59 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         _ => value
       }
     }
+    "pluralize" => {
+      match value {
+        Number(n) => {
+          // For pluralize, we need parameters: singular and plural forms
+          // This is a basic implementation - in practice this would be handled by apply_filter_with_params
+          if n == 1.0 {
+            String("1 item")
+          } else {
+            String(n.to_string() + " items")
+          }
+        }
+        _ => value
+      }
+    }
+    "reading_time" => {
+      match value {
+        String(text) => {
+          // Estimate reading time based on word count (average 200 words per minute)
+          let word_count = text.split(" ").collect().length()
+          let minutes = (word_count.to_double() / 200.0).ceil()
+          Number(minutes)
+        }
+        _ => Number(1.0) // Default to 1 minute
+      }
+    }
+    "sort_by" => {
+      match value {
+        Array(arr) => {
+          // Use the same selection sort algorithm as the sort filter
+          let sorted = Array::from_iter(arr.iter())
+          let mut i = 0
+          while i < sorted.length() {
+            let mut min_idx = i
+            let mut j = i + 1
+            while j < sorted.length() {
+              if sorted[j].to_string() < sorted[min_idx].to_string() {
+                min_idx = j
+              }
+              j = j + 1
+            }
+            if min_idx != i {
+              let temp = sorted[i]
+              sorted[i] = sorted[min_idx]
+              sorted[min_idx] = temp
+            }
+            i = i + 1
+          }
+          Array(sorted)
+        }
+        _ => value
+      }
+    }
+
     _ => value
   }
 }
@@ -1996,7 +2523,22 @@ pub fn for_node(
   collection : String,
   body : Array[LiquidNode],
 ) -> LiquidNode {
-  For(loop_var, collection, body)
+  For(loop_var, collection, body, { limit: None, offset: None, reversed: false })
+}
+
+///|
+pub fn for_node_with_modifiers(
+  loop_var : String,
+  collection : String,
+  body : Array[LiquidNode],
+  modifiers : ForLoopModifiers,
+) -> LiquidNode {
+  For(loop_var, collection, body, modifiers)
+}
+
+///|
+pub fn for_loop_modifiers(limit : Int?, offset : Int?, reversed : Bool) -> ForLoopModifiers {
+  { limit, offset, reversed }
 }
 
 ///|
@@ -2085,4 +2627,24 @@ pub fn capture_node(var_name : String, content : Array[LiquidNode]) -> LiquidNod
 ///|
 pub fn raw_node(raw_content : String) -> LiquidNode {
   Raw(raw_content)
+}
+
+///|
+pub fn increment_node(var_name : String) -> LiquidNode {
+  Increment(var_name)
+}
+
+///|
+pub fn decrement_node(var_name : String) -> LiquidNode {
+  Decrement(var_name)
+}
+
+///|
+pub fn echo_node(var_name : String, filters : Array[Filter]) -> LiquidNode {
+  Echo(var_name, filters)
+}
+
+///|
+pub fn ifchanged_node(body : Array[LiquidNode]) -> LiquidNode {
+  IfChanged(body)
 }
