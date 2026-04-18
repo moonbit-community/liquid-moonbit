@@ -1,0 +1,7 @@
+import {
+  "bobzhang/liquid",
+}
+
+options(
+  "is-main": true,
+)
