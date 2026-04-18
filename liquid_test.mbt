@@ -59,7 +59,7 @@ test "liquid context operations" {
 test "template parsing basic" {
   // Test basic template parsing with text and variables
   let template = parse("Hello {{ name }}!")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Text", "Hello "], ["Variable", "name", []], ["Text", "!"]],
   })
 }
@@ -89,7 +89,7 @@ test "template rendering multiple variables" {
   let template = parse(
     "{{ greeting }} {{ name }}, you have {{ count }} messages.",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Variable", "greeting", []],
       ["Text", " "],
@@ -162,7 +162,7 @@ test "filter size" {
 test "template with filters" {
   // Test template parsing with filters
   let template = parse("Hello {{ name | upcase }}!")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Hello "],
       ["Variable", "name", [{ "name": "upcase", "parameters": [] }]],
@@ -179,7 +179,7 @@ test "template with filters" {
 test "template with multiple filters" {
   // Test template parsing with multiple filters chained
   let template = parse("{{ text | upcase | size }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       [
         "Variable",
@@ -285,7 +285,7 @@ test "condition evaluation falsy values" {
 test "edge case empty template" {
   // Test parsing and rendering empty template
   let template = parse("")
-  @json.inspect(template, content={ "nodes": [] })
+  json_inspect(template, content={ "nodes": [] })
   let context = LiquidContext::new()
   let result = template.render(context)
   assert_eq(result, "")
@@ -295,7 +295,7 @@ test "edge case empty template" {
 test "edge case only text template" {
   // Test template with only text (no variables)
   let template = parse("Hello World!")
-  @json.inspect(template, content={ "nodes": [["Text", "Hello World!"]] })
+  json_inspect(template, content={ "nodes": [["Text", "Hello World!"]] })
   let context = LiquidContext::new()
   let result = template.render(context)
   assert_eq(result, "Hello World!")
@@ -305,7 +305,7 @@ test "edge case only text template" {
 test "edge case malformed liquid tags" {
   // Test malformed liquid tags (unclosed)
   let template = parse("Hello {{ name")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Text", "Hello "], ["Text", "Hello {{ name"]],
   })
   let context = LiquidContext::new()
@@ -319,7 +319,7 @@ test "edge case malformed liquid tags" {
 test "edge case nested liquid tags" {
   // Test nested liquid tags (should not be processed)
   let template = parse("Hello {{ {{ name }} }}!")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Text", "Hello "], ["Variable", "{{ name", []], ["Text", " }}!"]],
   })
   let context = LiquidContext::new()
@@ -333,7 +333,7 @@ test "edge case nested liquid tags" {
 test "edge case multiple consecutive variables" {
   // Test multiple consecutive variables
   let template = parse("{{a}}{{b}}{{c}}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Variable", "a", []],
       ["Variable", "b", []],
@@ -352,7 +352,7 @@ test "edge case multiple consecutive variables" {
 test "edge case variable with whitespace variations" {
   // Test variables with different whitespace patterns
   let template = parse("{{name}} {{ name }} {{  name  }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Variable", "name", []],
       ["Text", " "],
@@ -375,7 +375,7 @@ test "edge case filter with whitespace" {
   let template = parse(
     "{{ name|upcase }} {{ name | upcase }} {{ name |upcase}}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Variable", "name", [{ "name": "upcase", "parameters": [] }]],
       ["Text", " "],
@@ -398,7 +398,7 @@ test "integration basic template" {
   let template = parse(
     "Hello, {{ name }}!\nWelcome to {{ site_name }}.\nYour role: {{ user.role }}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Hello, "],
       ["Variable", "name", []],
@@ -425,7 +425,7 @@ test "integration filter chain" {
   let template = parse(
     "Original: {{ text }}\nUppercase: {{ text | upcase }}\nSize: {{ text | size }}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Original: "],
       ["Variable", "text", []],
@@ -448,7 +448,7 @@ test "integration blog post metadata" {
   let template = parse(
     "{{ post.title }}\nby {{ post.author.name }}\nTags: {{ post.tags | size }} tags",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Variable", "post.title", []],
       ["Text", "\nby "],
@@ -478,7 +478,7 @@ test "integration complex template" {
   let template = parse(
     "Welcome {{ name | upcase }}!\nYou have {{ count }} items.\nFirst item: {{ items | size }} total",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Welcome "],
       ["Variable", "name", [{ "name": "upcase", "parameters": [] }]],
@@ -511,7 +511,7 @@ test "basic comment tag" {
   let template = parse(
     "Hello {% comment %}This is ignored{% endcomment %}World!",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Hello "],
       ["Comment", "comment"],
@@ -530,7 +530,7 @@ test "basic comment tag" {
 test "basic logic tag parsing" {
   // Test that logic tags are parsed (even if not fully implemented yet)
   let template = parse("Start {% assign name = 'test' %} End")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Start "],
       ["Assign", "name", "'test'"],
@@ -548,7 +548,7 @@ test "mixed variable and logic tags" {
   let template = parse(
     "Hello {{ name }}! {% comment %}greeting{% endcomment %} Welcome!",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Hello "],
       ["Variable", "name", []],
@@ -570,7 +570,7 @@ test "mixed variable and logic tags" {
 test "unless tag basic" {
   // Test unless tag (opposite of if)
   let template = parse("{% unless show_message %}Hidden content{% endunless %}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Unless", "show_message", [["Text", "UNLESS_TRUE"]]],
       ["Text", "Hidden content"],
@@ -589,7 +589,7 @@ test "unless tag basic" {
 test "assign tag basic" {
   // Test assign tag parsing
   let template = parse("{% assign greeting = 'Hello' %}{{ greeting }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Assign", "greeting", "'Hello'"], ["Variable", "greeting", []]],
   })
   let context = LiquidContext::new()
@@ -603,7 +603,7 @@ test "assign tag basic" {
 test "assign tag string literal" {
   // Test assign with string literal
   let template = parse("{% assign name = 'World' %}Hello {{ name }}!")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Assign", "name", "'World'"],
       ["Text", "Hello "],
@@ -620,7 +620,7 @@ test "assign tag string literal" {
 test "assign tag double quotes" {
   // Test assign with double quotes
   let template = parse("{% assign message = \"Welcome\" %}{{ message }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Assign", "message", "\"Welcome\""], ["Variable", "message", []]],
   })
   let context = LiquidContext::new()
@@ -632,7 +632,7 @@ test "assign tag double quotes" {
 test "assign tag number" {
   // Test assign with number
   let template = parse("{% assign count = 5 %}Count: {{ count }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Assign", "count", "5"],
       ["Text", "Count: "],
@@ -650,7 +650,7 @@ test "assign tag boolean" {
   let template = parse(
     "{% assign flag = true %}{% assign flag2 = false %}{{ flag }} {{ flag2 }}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Assign", "flag", "true"],
       ["Assign", "flag2", "false"],
@@ -668,7 +668,7 @@ test "assign tag boolean" {
 test "assign tag null" {
   // Test assign with null value
   let template = parse("{% assign empty = null %}{{ empty }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Assign", "empty", "null"], ["Variable", "empty", []]],
   })
   let context = LiquidContext::new()
@@ -682,7 +682,7 @@ test "assign tag variable reference" {
   let template = parse(
     "{% assign original = 'Hello' %}{% assign copy = original %}{{ copy }}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Assign", "original", "'Hello'"],
       ["Assign", "copy", "original"],
@@ -698,7 +698,7 @@ test "assign tag variable reference" {
 test "assign tag with whitespace" {
   // Test assign with various whitespace patterns
   let template = parse("{%  assign   name   =   'Test'  %}{{ name }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Assign", "name", "'Test'"], ["Variable", "name", []]],
   })
   let context = LiquidContext::new()
@@ -712,7 +712,7 @@ test "multiple assign tags" {
   let template = parse(
     "{% assign a = 'A' %}{% assign b = 'B' %}{% assign c = 'C' %}{{ a }}{{ b }}{{ c }}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Assign", "a", "'A'"],
       ["Assign", "b", "'B'"],
@@ -733,7 +733,7 @@ test "comment tag parsing" {
   let template = parse(
     "Before{% comment %}This is a comment{% endcomment %}After",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Text", "Before"],
       ["Comment", "comment"],
@@ -754,7 +754,7 @@ test "capture tag parsing" {
   let template = parse(
     "{% capture my_var %}content{% endcapture %}{{ my_var }}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Capture", "my_var", [["Text", "CAPTURED_CONTENT"]]],
       ["Text", "content"],
@@ -772,7 +772,7 @@ test "capture tag parsing" {
 test "raw tag parsing" {
   // Test raw tag parsing (basic recognition)
   let template = parse("{% raw %}{{ not_processed }}{% endraw %}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Raw", "{{ not_processed }} liquid code"],
       ["Variable", "not_processed", []],
@@ -1620,7 +1620,7 @@ test "error policy context isolation" {
 test "whitespace control parsing" {
   // Test that whitespace control syntax is recognized
   let template = parse("{{- name -}}")
-  @json.inspect(template, content={ "nodes": [["Variable", "- name -", []]] })
+  json_inspect(template, content={ "nodes": [["Variable", "- name -", []]] })
   let context = LiquidContext::new()
   context.set("- name -", string_value("World")) // Parser treats this as variable name
   let result = template.render(context)
@@ -1654,16 +1654,16 @@ test "whitespace control mixed" {
 test "whitespace control struct creation" {
   // Test WhitespaceControl struct constructor functions
   let ws_both = whitespace_control(true, true)
-  @json.inspect(ws_both, content={ "strip_left": true, "strip_right": true })
+  json_inspect(ws_both, content={ "strip_left": true, "strip_right": true })
 
   let ws_left = whitespace_control(true, false)
-  @json.inspect(ws_left, content={ "strip_left": true, "strip_right": false })
+  json_inspect(ws_left, content={ "strip_left": true, "strip_right": false })
 
   let ws_right = whitespace_control(false, true)
-  @json.inspect(ws_right, content={ "strip_left": false, "strip_right": true })
+  json_inspect(ws_right, content={ "strip_left": false, "strip_right": true })
 
   let ws_none = no_whitespace_control()
-  @json.inspect(ws_none, content={ "strip_left": false, "strip_right": false })
+  json_inspect(ws_none, content={ "strip_left": false, "strip_right": false })
 
   // Verify properties
   assert_eq(ws_both.strip_left, true)
@@ -2138,7 +2138,19 @@ test "money filters in template" {
 test "if tag execution" {
   // Test if tag execution
   let template = parse("{% if show_message %}Hello World{% endif %}")
-  @json.inspect(template, content=({"nodes":[["If","show_message",[["Text","TRUE_BRANCH"]],[],[[["Text","FALSE_BRANCH"]]]],["Text","Hello World"],["Comment","endif"]]}))
+  json_inspect(template, content={
+    "nodes": [
+      [
+        "If",
+        "show_message",
+        [["Text", "TRUE_BRANCH"]],
+        [],
+        [[["Text", "FALSE_BRANCH"]]],
+      ],
+      ["Text", "Hello World"],
+      ["Comment", "endif"],
+    ],
+  })
   let context = LiquidContext::new()
   context.set("show_message", bool_value(true))
   let result = template.render(context)
@@ -2149,7 +2161,7 @@ test "if tag execution" {
 test "for tag execution" {
   // Test for tag execution
   let template = parse("{% for item in items %}{{ item }}{% endfor %}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       [
         "For",
@@ -2213,7 +2225,19 @@ test "nested control flow" {
 test "control flow with conditions" {
   // Test control flow with complex conditions
   let template = parse("{% if age >= 18 and is_member %}Welcome{% endif %}")
-  @json.inspect(template, content=({"nodes":[["If","age >= 18 and is_member",[["Text","TRUE_BRANCH"]],[],[[["Text","FALSE_BRANCH"]]]],["Text","Welcome"],["Comment","endif"]]}))
+  json_inspect(template, content={
+    "nodes": [
+      [
+        "If",
+        "age >= 18 and is_member",
+        [["Text", "TRUE_BRANCH"]],
+        [],
+        [[["Text", "FALSE_BRANCH"]]],
+      ],
+      ["Text", "Welcome"],
+      ["Comment", "endif"],
+    ],
+  })
   let context = LiquidContext::new()
   context.set("age", number_value(25.0))
   context.set("is_member", bool_value(true))
@@ -2227,7 +2251,7 @@ test "control flow with conditions" {
 test "cycle tag basic" {
   // Test basic cycle tag
   let template = parse("{% cycle 'odd', 'even' %}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Cycle", "default", ["odd", "even"]]],
   })
   let context = LiquidContext::new()
@@ -2239,7 +2263,7 @@ test "cycle tag basic" {
 test "cycle tag parsing" {
   // Test cycle tag parsing recognition
   let template = parse("{% cycle group1: 'red', 'green', 'blue' %}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [["Cycle", "default", ["odd", "even"]]],
   })
   let context = LiquidContext::new()
@@ -2377,7 +2401,7 @@ test "tablerow with empty array" {
 test "break tag parsing" {
   // Test break tag parsing
   let template = parse("{% break %}")
-  @json.inspect(template, content={ "nodes": ["Break"] })
+  json_inspect(template, content={ "nodes": ["Break"] })
   let context = LiquidContext::new()
   let result = template.render(context)
   assert_eq(result, "") // Break produces no output
@@ -2387,7 +2411,7 @@ test "break tag parsing" {
 test "continue tag parsing" {
   // Test continue tag parsing
   let template = parse("{% continue %}")
-  @json.inspect(template, content={ "nodes": ["Continue"] })
+  json_inspect(template, content={ "nodes": ["Continue"] })
   let context = LiquidContext::new()
   let result = template.render(context)
   assert_eq(result, "") // Continue produces no output
@@ -2662,7 +2686,7 @@ test "slice filter single parameter" {
 test "multiple parameter parsing" {
   // Test parsing multiple parameters with commas
   let template = parse("{{ text | slice: 0, 5 | upcase }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       [
         "Variable",
@@ -2684,7 +2708,7 @@ test "multiple parameter parsing" {
 test "parameter with quotes and spaces" {
   // Test parameter parsing with quotes and spaces
   let template = parse("{{ items | join: ' -> ' }}")
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       ["Variable", "items", [{ "name": "join", "parameters": ["' -> '"] }]],
     ],
@@ -2706,7 +2730,7 @@ test "complex filter parameter combinations" {
   let template = parse(
     "{{ data | compact | slice: 1, 2 | join: ' | ' | upcase }}",
   )
-  @json.inspect(template, content={
+  json_inspect(template, content={
     "nodes": [
       [
         "Variable",
@@ -4385,7 +4409,7 @@ test "date filter parameter variations" {
 }
 
 ///|
-test "where filter edge cases" {
+test "where filter edge cases v2" {
 
   // Test where filter with mixed array types
   let mixed_arr = array_value([
@@ -4590,7 +4614,7 @@ test "additional edge cases for remaining coverage" {
 }
 
 ///|
-test "date filter format edge cases" {
+test "date filter format edge cases v2" {
   // Test date filter with 2023 date and long format
   let date_2023 = string_value("2023-12-01")
   let filter_long = filter("date", ["%B %d, %Y"])
@@ -5268,19 +5292,19 @@ test "concat filter basic" {
 test "template parsing with new tags" {
   // Test parsing of new tags
   let template_increment = parse("{% increment counter %}")
-  @json.inspect(template_increment, content={
+  json_inspect(template_increment, content={
     "nodes": [["Increment", "counter"]],
   })
   let template_decrement = parse("{% decrement counter %}")
-  @json.inspect(template_decrement, content={
+  json_inspect(template_decrement, content={
     "nodes": [["Decrement", "counter"]],
   })
   let template_echo = parse("{% echo name | upcase %}")
-  @json.inspect(template_echo, content={
+  json_inspect(template_echo, content={
     "nodes": [["Echo", "name", [{ "name": "upcase", "parameters": [] }]]],
   })
   let template_ifchanged = parse("{% ifchanged %}")
-  @json.inspect(template_ifchanged, content={
+  json_inspect(template_ifchanged, content={
     "nodes": [["IfChanged", [["Text", "CHANGED_CONTENT"]]]],
   })
 }
@@ -5387,7 +5411,7 @@ test "template with layout struct creation" {
 
   // Test with layout
   let template_with = template_with_layout(nodes, Some("base"), blocks)
-  @json.inspect(template_with, content={
+  json_inspect(template_with, content={
     "nodes": [["Text", "Hello"], ["Variable", "name", []], ["Text", "!"]],
     "layout": "base",
     "blocks": {
@@ -5398,7 +5422,7 @@ test "template with layout struct creation" {
 
   // Test without layout
   let template_simple = simple_template_with_layout(nodes)
-  @json.inspect(template_simple, content={
+  json_inspect(template_simple, content={
     "nodes": [["Text", "Hello"], ["Variable", "name", []], ["Text", "!"]],
     "blocks": {},
   })
@@ -5409,14 +5433,14 @@ test "template with layout struct creation" {
     Some(layout) => assert_eq(layout, "base")
     None => fail("Expected layout to be Some")
   }
-  assert_eq(template_with.blocks.size(), 2)
+  assert_eq(template_with.blocks.length(), 2)
 
   assert_eq(template_simple.nodes.length(), 3)
   match template_simple.layout {
     Some(_) => fail("Expected layout to be None")
     None => ()
   }
-  assert_eq(template_simple.blocks.size(), 0)
+  assert_eq(template_simple.blocks.length(), 0)
 }
 
 ///|
@@ -5449,7 +5473,7 @@ test "template with layout complex scenarios" {
 
   // Verify structure
   assert_eq(template.nodes.length(), 3)
-  assert_eq(template.blocks.size(), 2)
+  assert_eq(template.blocks.length(), 2)
   match template.layout {
     Some(layout) => assert_eq(layout, "complex_layout")
     None => fail("Expected layout")
@@ -5473,7 +5497,7 @@ test "template with layout edge cases" {
   // Empty template
   let empty_template = simple_template_with_layout([])
   assert_eq(empty_template.nodes.length(), 0)
-  assert_eq(empty_template.blocks.size(), 0)
+  assert_eq(empty_template.blocks.length(), 0)
 
   // Template with empty blocks map
   let empty_blocks = Map::new()
@@ -5482,7 +5506,7 @@ test "template with layout edge cases" {
     Some("layout"),
     empty_blocks,
   )
-  assert_eq(template_empty_blocks.blocks.size(), 0)
+  assert_eq(template_empty_blocks.blocks.length(), 0)
 
   // Template with multiple identical block names (should overwrite)
   let blocks = Map::new()
@@ -5490,7 +5514,7 @@ test "template with layout edge cases" {
   blocks.set("content", [text_node("Second")]) // Overwrites first
 
   let template = template_with_layout([text_node("main")], None, blocks)
-  assert_eq(template.blocks.size(), 1)
+  assert_eq(template.blocks.length(), 1)
   match template.blocks.get("content") {
     Some(nodes) => {
       assert_eq(nodes.length(), 1)
@@ -5535,7 +5559,7 @@ test "template with layout integration" {
   }
 
   assert_eq(template_layout.nodes.length(), 3)
-  assert_eq(template_layout.blocks.size(), 2)
+  assert_eq(template_layout.blocks.length(), 2)
 }
 
 ///|
@@ -5642,13 +5666,13 @@ test "enhanced tablerowloop properties" {
 test "template parsing with layout tags" {
   // Test parsing of layout-related tags
   let template_layout = parse("{% layout 'base' %}")
-  @json.inspect(template_layout, content={ "nodes": [["Layout", "'base'"]] })
+  json_inspect(template_layout, content={ "nodes": [["Layout", "'base'"]] })
   let template_block = parse("{% block 'header' %}")
-  @json.inspect(template_block, content={
+  json_inspect(template_block, content={
     "nodes": [["Block", "'header'", [["Text", "BLOCK_CONTENT"]]]],
   })
   let template_content = parse("{% content %}")
-  @json.inspect(template_content, content={ "nodes": ["Content"] })
+  json_inspect(template_content, content={ "nodes": ["Content"] })
 }
 
 ///|
@@ -6406,7 +6430,7 @@ test "numeric precision and edge cases" {
 }
 
 ///|
-test "complex filter parameter combinations" {
+test "complex filter parameter combinations v2" {
   // Test complex combinations of filters with parameters
 
   // Test pluralize with edge case numbers

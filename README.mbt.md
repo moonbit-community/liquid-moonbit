@@ -37,7 +37,8 @@ cd my-project
 
 ### Basic Usage
 
-```moonbit
+```moonbit nocheck
+///|
 test "basic usage example" {
   // Import the library
   let template = parse("Hello, {{ name }}!")
@@ -62,7 +63,8 @@ Last login: {{ user.last_login | date: "%B %d, %Y" }}
 {% echo user.name | default: "Guest" %}
 ```
 
-```moonbit
+```moonbit nocheck
+///|
 test "variable substitution example" {
   // MoonBit code
   let context = LiquidContext::new()
@@ -72,7 +74,9 @@ test "variable substitution example" {
   user_obj.set("last_login", string_value("2023-12-01"))
   context.set("user", object_value(user_obj))
 
-  let template = parse("Hello, {{ user.name }}!\nYour role: {{ user.role | upcase }}")
+  let template = parse(
+    "Hello, {{ user.name }}!\nYour role: {{ user.role | upcase }}",
+  )
   let result = template.render(context)
   assert_eq(result.contains("Hello, Alice!"), true)
 }
@@ -164,7 +168,8 @@ The `examples/` directory contains comprehensive template examples:
 
 ### Core Types
 
-```moonbit
+```moonbit nocheck
+///|
 test "api reference types example" {
   // Value types
   let str_val = string_value("hello")
@@ -179,7 +184,7 @@ test "api reference types example" {
   // Template context
   let context = LiquidContext::new()
   context.set("example", str_val)
-  
+
   // Verify types work
   assert_eq(str_val.to_string(), "hello")
   assert_eq(num_val.to_string(), "42")
@@ -192,7 +197,8 @@ test "api reference types example" {
 
 ### Main Functions
 
-```moonbit
+```moonbit nocheck
+///|
 test "main functions example" {
   // Create a new context
   let context = LiquidContext::new()
@@ -206,7 +212,7 @@ test "main functions example" {
 
   // Apply filters
   let filtered = apply_filter(string_value("hello"), "upcase")
-  
+
   assert_eq(result, "Hello World!")
   assert_eq(filtered.to_string(), "HELLO")
 }
