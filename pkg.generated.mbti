@@ -1,0 +1,192 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/liquid"
+
+// Values
+pub fn apply_filter(LiquidValue, String) -> LiquidValue
+
+pub fn apply_filter_with_params(LiquidValue, Filter) -> LiquidValue
+
+pub fn array_value(Array[LiquidValue]) -> LiquidValue
+
+pub fn block_node(String, Array[LiquidNode]) -> LiquidNode
+
+pub fn bool_value(Bool) -> LiquidValue
+
+pub fn break_node() -> LiquidNode
+
+pub fn capture_node(String, Array[LiquidNode]) -> LiquidNode
+
+pub fn case_node(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?) -> LiquidNode
+
+pub fn content_node() -> LiquidNode
+
+pub fn continue_node() -> LiquidNode
+
+pub fn cycle_node(String, Array[String]) -> LiquidNode
+
+pub fn decrement_node(String) -> LiquidNode
+
+pub fn echo_node(String, Array[Filter]) -> LiquidNode
+
+pub fn evaluate_condition(String, LiquidContext) -> Bool
+
+pub fn evaluate_expression(String, LiquidContext) -> LiquidValue
+
+pub fn filter(String, Array[String]) -> Filter
+
+pub fn for_loop_modifiers(Int?, Int?, Bool) -> ForLoopModifiers
+
+pub fn for_node(String, String, Array[LiquidNode]) -> LiquidNode
+
+pub fn for_node_with_modifiers(String, String, Array[LiquidNode], ForLoopModifiers) -> LiquidNode
+
+pub fn if_node(String, Array[LiquidNode], Array[LiquidNode]?) -> LiquidNode
+
+pub fn if_node_with_elsif(String, Array[LiquidNode], Array[(String, Array[LiquidNode])], Array[LiquidNode]?) -> LiquidNode
+
+pub fn ifchanged_node(Array[LiquidNode]) -> LiquidNode
+
+pub fn include_node(String) -> LiquidNode
+
+pub fn increment_node(String) -> LiquidNode
+
+pub fn layout_node(String) -> LiquidNode
+
+pub fn liquid_node(Array[LiquidNode]) -> LiquidNode
+
+pub fn no_whitespace_control() -> WhitespaceControl
+
+pub fn null_value() -> LiquidValue
+
+pub fn number_value(Double) -> LiquidValue
+
+pub fn object_value(Map[String, LiquidValue]) -> LiquidValue
+
+pub fn parse(String) -> LiquidTemplate
+
+pub fn raw_node(String) -> LiquidNode
+
+pub fn render_node(LiquidNode, LiquidContext) -> String
+
+pub fn render_node_tag(String) -> LiquidNode
+
+pub fn render_with_layout(LiquidTemplate, LiquidTemplate, LiquidContext) -> String
+
+pub fn section_node(String) -> LiquidNode
+
+pub fn silent_policy() -> ErrorPolicy
+
+pub fn simple_template_with_layout(Array[LiquidNode]) -> TemplateWithLayout
+
+pub fn strict_policy() -> ErrorPolicy
+
+pub fn string_value(String) -> LiquidValue
+
+pub fn style_node(String) -> LiquidNode
+
+pub fn tablerow_node(String, String, Array[LiquidNode], Int) -> LiquidNode
+
+pub fn template_with_layout(Array[LiquidNode], String?, Map[String, Array[LiquidNode]]) -> TemplateWithLayout
+
+pub fn text_node(String) -> LiquidNode
+
+pub fn unless_node(String, Array[LiquidNode]) -> LiquidNode
+
+pub fn variable_node(String, Array[Filter]) -> LiquidNode
+
+pub fn variable_node_simple(String, Array[String]) -> LiquidNode
+
+pub fn warn_policy() -> ErrorPolicy
+
+pub fn whitespace_control(Bool, Bool) -> WhitespaceControl
+
+// Errors
+
+// Types and methods
+pub enum ErrorPolicy {
+  Strict
+  Warn
+  Silent
+} derive(ToJson)
+
+pub struct Filter {
+  name : String
+  parameters : Array[String]
+} derive(ToJson)
+
+pub struct ForLoopModifiers {
+  limit : Int?
+  offset : Int?
+  reversed : Bool
+} derive(ToJson)
+
+pub struct LiquidContext {
+  variables : Map[String, LiquidValue]
+  error_policy : ErrorPolicy
+} derive(ToJson)
+pub fn LiquidContext::get(Self, String) -> LiquidValue?
+pub fn LiquidContext::new() -> Self
+#alias(op_set)
+pub fn LiquidContext::set(Self, String, LiquidValue) -> Unit
+pub fn LiquidContext::with_error_policy(ErrorPolicy) -> Self
+
+pub enum LiquidNode {
+  Text(String)
+  Variable(String, Array[Filter])
+  For(String, String, Array[LiquidNode], ForLoopModifiers)
+  If(String, Array[LiquidNode], Array[(String, Array[LiquidNode])], Array[LiquidNode]?)
+  Unless(String, Array[LiquidNode])
+  Case(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?)
+  Assign(String, String)
+  Comment(String)
+  Cycle(String, Array[String])
+  TableRow(String, String, Array[LiquidNode], Int)
+  Break
+  Continue
+  Liquid(Array[LiquidNode])
+  Section(String)
+  Style(String)
+  Include(String)
+  Render(String)
+  Capture(String, Array[LiquidNode])
+  Raw(String)
+  Increment(String)
+  Decrement(String)
+  Echo(String, Array[Filter])
+  IfChanged(Array[LiquidNode])
+  Layout(String)
+  Block(String, Array[LiquidNode])
+  Content
+} derive(ToJson)
+
+pub struct LiquidTemplate {
+  nodes : Array[LiquidNode]
+} derive(ToJson)
+pub fn LiquidTemplate::new() -> Self
+pub fn LiquidTemplate::render(Self, LiquidContext) -> String
+
+pub enum LiquidValue {
+  String(String)
+  Number(Double)
+  Bool(Bool)
+  Array(Array[LiquidValue])
+  Object(Map[String, LiquidValue])
+  Null
+} derive(ToJson)
+pub fn LiquidValue::to_string(Self) -> String
+
+pub struct TemplateWithLayout {
+  nodes : Array[LiquidNode]
+  layout : String?
+  blocks : Map[String, Array[LiquidNode]]
+} derive(ToJson)
+
+pub struct WhitespaceControl {
+  strip_left : Bool
+  strip_right : Bool
+} derive(ToJson)
+
+// Type aliases
+
+// Traits
+

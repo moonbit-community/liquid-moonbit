@@ -22,10 +22,8 @@ jobs:
       - name: Update dependencies
         run: moon update
 
-      # Deprecation warnings from nightly get upgraded to hard errors; disable
-      # them so CI only flags real problems.
       - name: Check
-        run: moon check --warn-list=-a
+        run: moon check
 
       - name: Test
-        run: moon test --warn-list=-a
+        run: moon test
