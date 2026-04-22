@@ -86,11 +86,11 @@ pub fn LiquidContext::get(self : LiquidContext, key : String) -> LiquidValue? {
   if key.contains(".") {
     let parts = key.split(".").collect()
     if parts.length() >= 2 {
-      let object_name = parts[0].to_string()
+      let object_name = parts[0].to_owned()
       match self.variables.get(object_name) {
         Some(Object(obj)) => {
           // Navigate through nested properties
-          let mut current_value = obj.get(parts[1].to_string())
+          let mut current_value = obj.get(parts[1].to_owned())
           let mut part_index = 2
           while part_index < parts.length() {
             match current_value {
@@ -99,7 +99,7 @@ pub fn LiquidContext::get(self : LiquidContext, key : String) -> LiquidValue? {
             }
             match current_value {
               Some(Object(nested_obj)) => {
-                current_value = nested_obj.get(parts[part_index].to_string())
+                current_value = nested_obj.get(parts[part_index].to_owned())
                 part_index = part_index + 1
               }
               _ => break
@@ -142,7 +142,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
   let len = template.length()
   while current < len {
     // Find next liquid tag from current position (either {{ or {% )
-    let remaining = template.substring(start=current)
+    let remaining = template[current:].to_owned()
     let variable_tag = remaining.find("{{")
     let logic_tag = remaining.find("{%")
     // Whitespace control detection
@@ -197,7 +197,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
       (None, None, None, None) => {
         // No more tags, add remaining text
         if current < len {
-          nodes.push(Text(template.substring(start=current)))
+          nodes.push(Text(template[current:].to_owned()))
         }
         break
       }
@@ -206,7 +206,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
 
     // Add text before tag (with whitespace control)
     if start > current {
-      let mut text = template.substring(start=current, end=start)
+      let mut text = template[current:start].to_owned()
 
       // Apply whitespace control if previous tag had strip_right
       if nodes.length() > 0 {
@@ -216,7 +216,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
 
       // Apply whitespace control if current tag has strip_left
       if strip_left {
-        text = text.trim_end(chars=" \t\n\r").to_string()
+        text = text.trim_end(chars=" \t\n\r").to_owned()
       }
       if text != "" {
         nodes.push(Text(text))
@@ -227,40 +227,41 @@ fn parse_template(template : String) -> Array[LiquidNode] {
     match tag_type {
       "variable" => {
         let search_start = start + 2
-        let tag_remaining = template.substring(start=search_start)
+        let tag_remaining = template[search_start:].to_owned()
         match tag_remaining.find("}}") {
           Some(relative_end) => {
             let end = search_start + relative_end
-            let tag_content = template.substring(start=start + 2, end~)
+            let tag_content = template[start + 2:end].to_owned()
             let trimmed_content = tag_content.to_string()
 
             // Parse variable and filters
             let parts = trimmed_content.split("|").collect()
-            let variable_name = parts[0].to_string().trim(chars=" \t").to_string()
+            let variable_name = parts[0].to_owned().trim(chars=" \t").to_owned()
             let filters = if parts.length() > 1 {
               let filter_objs : Array[Filter] = []
               for i in 1..<parts.length() {
-                let filter_str = parts[i].to_string().trim(chars=" \t").to_string()
+                let filter_str = parts[i]
+                  .to_owned()
+                  .trim(chars=" \t")
+                  .to_owned()
                 // Parse filter parameters (e.g., "truncate: 50" or "slice: 1, 3")
                 if filter_str.contains(":") {
                   let filter_parts = filter_str.split(":").collect()
                   let filter_name = filter_parts[0]
-                    .to_string()
+                    .to_owned()
                     .trim(chars=" \t")
-                    .to_string()
+                    .to_owned()
                   let params = if filter_parts.length() > 1 {
                     let param_str = filter_parts[1]
-                      .to_string()
+                      .to_owned()
                       .trim(chars=" \t")
-                      .to_string()
+                      .to_owned()
                     // Handle multiple parameters separated by commas
                     if param_str.contains(",") {
                       let param_parts = param_str.split(",").collect()
                       let multiple_params : Array[String] = []
                       for param in param_parts {
-                        multiple_params.push(
-                          param.to_string().trim(chars=" \t").to_string(),
-                        )
+                        multiple_params.push(param.trim(chars=" \t").to_owned())
                       }
                       multiple_params
                     } else {
@@ -283,32 +284,32 @@ fn parse_template(template : String) -> Array[LiquidNode] {
           }
           None => {
             // Malformed tag, treat as text
-            nodes.push(Text(template.substring(start=current)))
+            nodes.push(Text(template[current:].to_owned()))
             break
           }
         }
       }
       "logic" => {
         let search_start = start + 2
-        let tag_remaining = template.substring(start=search_start)
+        let tag_remaining = template[search_start:].to_owned()
         match tag_remaining.find("%}") {
           Some(relative_end) => {
             let end = search_start + relative_end
-            let tag_content = template.substring(start=start + 2, end~)
+            let tag_content = template[start + 2:end].to_owned()
             let trimmed_content = tag_content
               .to_string()
               .trim(chars=" \t")
-              .to_string()
+              .to_owned()
 
             // Parse logic tag based on type
             if trimmed_content.strip_prefix("comment") != None {
               nodes.push(Comment(trimmed_content))
             } else if trimmed_content.strip_prefix("if ") != None {
               // Parse if statement: {% if condition %}...{% endif %}
-              let condition = trimmed_content
-                .substring(start=3)
+              let condition = trimmed_content[3:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               // Create if node with actual condition evaluation and elsif support
               let elsif_branches : Array[(String, Array[LiquidNode])] = []
               nodes.push(
@@ -322,18 +323,21 @@ fn parse_template(template : String) -> Array[LiquidNode] {
             } else if trimmed_content.strip_prefix("for ") != None {
               // Parse for loop: {% for item in collection %}...{% endfor %}
               // Also supports: {% for item in collection limit: 5 offset: 2 reversed %}
-              let for_content = trimmed_content
-                .substring(start=4)
+              let for_content = trimmed_content[4:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               if for_content.contains(" in ") {
                 let parts = for_content.split(" in ").collect()
                 if parts.length() == 2 {
-                  let loop_var = parts[0].to_string().trim(chars=" \t").to_string()
-                  let collection_and_modifiers = parts[1]
-                    .to_string()
+                  let loop_var = parts[0]
+                    .to_owned()
                     .trim(chars=" \t")
-                    .to_string()
+                    .to_owned()
+                  let collection_and_modifiers = parts[1]
+                    .to_owned()
+                    .trim(chars=" \t")
+                    .to_owned()
 
                   // Parse collection and modifiers
                   let (collection, modifiers) = parse_for_loop_modifiers(
@@ -355,10 +359,10 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               }
             } else if trimmed_content.strip_prefix("case ") != None {
               // Parse case statement: {% case expression %}...{% endcase %}
-              let expression = trimmed_content
-                .substring(start=5)
+              let expression = trimmed_content[5:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               // Create case with sample when branches
               let when_branches = [
                 ("admin", [text_node("Admin Panel")]),
@@ -374,53 +378,56 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               )
             } else if trimmed_content.strip_prefix("when ") != None {
               // Parse when statement: {% when 'value' %}
-              let when_value = trimmed_content
-                .substring(start=5)
+              let when_value = trimmed_content[5:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               // For now, treat as comment since when is part of case parsing
               nodes.push(Comment("when " + when_value))
             } else if trimmed_content.strip_prefix("unless ") != None {
               // Parse unless statement: {% unless condition %}...{% endunless %}
-              let condition = trimmed_content
-                .substring(start=7)
+              let condition = trimmed_content[7:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Unless(condition, [text_node("UNLESS_TRUE")]))
             } else if trimmed_content.strip_prefix("cycle ") != None {
               // Parse cycle tag: {% cycle 'group1': 'value1', 'value2', 'value3' %}
-              let _cycle_content = trimmed_content
-                .substring(start=6)
+              let _cycle_content = trimmed_content[6:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               // Simple cycle parsing - for now just use default values
               let cycle_name = "default"
               let cycle_values = ["odd", "even"] // Simple alternating cycle
               nodes.push(Cycle(cycle_name, cycle_values))
             } else if trimmed_content.strip_prefix("tablerow ") != None {
               // Parse tablerow tag: {% tablerow item in collection cols: 3 %}
-              let tablerow_content = trimmed_content
-                .substring(start=10)
+              let tablerow_content = trimmed_content[10:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               if tablerow_content.contains(" in ") {
                 let parts = tablerow_content.split(" in ").collect()
                 if parts.length() == 2 {
-                  let loop_var = parts[0].to_string().trim(chars=" \t").to_string()
-                  let rest = parts[1].to_string().trim(chars=" \t").to_string()
+                  let loop_var = parts[0]
+                    .to_owned()
+                    .trim(chars=" \t")
+                    .to_owned()
+                  let rest = parts[1].to_owned().trim(chars=" \t").to_owned()
 
                   // Parse collection and cols
                   let (collection, cols) = if rest.contains(" cols:") {
                     let col_parts = rest.split(" cols:").collect()
                     if col_parts.length() == 2 {
                       let coll = col_parts[0]
-                        .to_string()
+                        .to_owned()
                         .trim(chars=" \t")
-                        .to_string()
+                        .to_owned()
                       let col_str = col_parts[1]
-                        .to_string()
+                        .to_owned()
                         .trim(chars=" \t")
-                        .to_string()
+                        .to_owned()
                       let col_num = match col_str {
                         "1" => 1
                         "2" => 2
@@ -462,48 +469,51 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Liquid([text_node("LIQUID_BLOCK")]))
             } else if trimmed_content.strip_prefix("section ") != None {
               // Parse section tag: {% section 'section-name' %}
-              let section_name = trimmed_content
-                .substring(start=8)
+              let section_name = trimmed_content[8:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Section(section_name))
             } else if trimmed_content.strip_prefix("style") != None {
               // Parse style tag: {% style %}...{% endstyle %}
               nodes.push(Style("CSS_CONTENT"))
             } else if trimmed_content.strip_prefix("include ") != None {
               // Parse include tag: {% include 'template-name' %}
-              let template_name = trimmed_content
-                .substring(start=8)
+              let template_name = trimmed_content[8:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Include(template_name))
             } else if trimmed_content.strip_prefix("render ") != None {
               // Parse render tag: {% render 'template-name' %}
-              let template_name = trimmed_content
-                .substring(start=7)
+              let template_name = trimmed_content[7:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Render(template_name))
             } else if trimmed_content.strip_prefix("assign ") != None {
               // Parse assign tag: {% assign var = value %}
-              let assign_content = trimmed_content
-                .substring(start=7)
+              let assign_content = trimmed_content[7:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               let parts = assign_content.split("=").collect()
               if parts.length() >= 2 {
-                let var_name = parts[0].to_string().trim(chars=" \t").to_string()
-                let expression = parts[1].to_string().trim(chars=" \t").to_string()
+                let var_name = parts[0].to_owned().trim(chars=" \t").to_owned()
+                let expression = parts[1]
+                  .to_owned()
+                  .trim(chars=" \t")
+                  .to_owned()
                 nodes.push(Assign(var_name, expression))
               } else {
                 nodes.push(Comment(trimmed_content))
               }
             } else if trimmed_content.strip_prefix("capture ") != None {
               // Parse capture tag: {% capture var %}...{% endcapture %}
-              let capture_var = trimmed_content
-                .substring(start=8)
+              let capture_var = trimmed_content[8:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               // Create capture node with sample content
               nodes.push(Capture(capture_var, [text_node("CAPTURED_CONTENT")]))
             } else if trimmed_content.strip_prefix("raw") != None {
@@ -511,48 +521,54 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Raw("{{ not_processed }} liquid code"))
             } else if trimmed_content.strip_prefix("increment ") != None {
               // Parse increment tag: {% increment variable %}
-              let var_name = trimmed_content
-                .substring(start=10)
+              let var_name = trimmed_content[10:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Increment(var_name))
             } else if trimmed_content.strip_prefix("decrement ") != None {
               // Parse decrement tag: {% decrement variable %}
-              let var_name = trimmed_content
-                .substring(start=10)
+              let var_name = trimmed_content[10:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Decrement(var_name))
             } else if trimmed_content.strip_prefix("echo ") != None {
               // Parse echo tag: {% echo variable | filter %}
-              let echo_content = trimmed_content
-                .substring(start=5)
+              let echo_content = trimmed_content[5:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               // Parse variable and filters (similar to variable parsing)
               let parts = echo_content.split("|").collect()
-              let variable_name = parts[0].to_string().trim(chars=" \t").to_string()
+              let variable_name = parts[0]
+                .to_owned()
+                .trim(chars=" \t")
+                .to_owned()
               let filters = if parts.length() > 1 {
                 let filter_objs : Array[Filter] = []
                 for i in 1..<parts.length() {
-                  let filter_str = parts[i].to_string().trim(chars=" \t").to_string()
+                  let filter_str = parts[i]
+                    .to_owned()
+                    .trim(chars=" \t")
+                    .to_owned()
                   if filter_str.contains(":") {
                     let filter_parts = filter_str.split(":").collect()
                     let filter_name = filter_parts[0]
-                      .to_string()
+                      .to_owned()
                       .trim(chars=" \t")
-                      .to_string()
+                      .to_owned()
                     let params = if filter_parts.length() > 1 {
                       let param_str = filter_parts[1]
-                        .to_string()
+                        .to_owned()
                         .trim(chars=" \t")
-                        .to_string()
+                        .to_owned()
                       if param_str.contains(",") {
                         let param_parts = param_str.split(",").collect()
                         let multiple_params : Array[String] = []
                         for param in param_parts {
                           multiple_params.push(
-                            param.to_string().trim(chars=" \t").to_string(),
+                            param.trim(chars=" \t").to_owned(),
                           )
                         }
                         multiple_params
@@ -577,17 +593,17 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(IfChanged([text_node("CHANGED_CONTENT")]))
             } else if trimmed_content.strip_prefix("layout ") != None {
               // Parse layout tag: {% layout 'template-name' %}
-              let layout_name = trimmed_content
-                .substring(start=7)
+              let layout_name = trimmed_content[7:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Layout(layout_name))
             } else if trimmed_content.strip_prefix("block ") != None {
               // Parse block tag: {% block 'block-name' %}...{% endblock %}
-              let block_name = trimmed_content
-                .substring(start=6)
+              let block_name = trimmed_content[6:]
+                .to_owned()
                 .trim(chars=" \t")
-                .to_string()
+                .to_owned()
               nodes.push(Block(block_name, [text_node("BLOCK_CONTENT")]))
             } else if trimmed_content == "content" {
               // Parse content tag: {% content %}
@@ -600,7 +616,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
           }
           None => {
             // Malformed tag, treat as text
-            nodes.push(Text(template.substring(start=current)))
+            nodes.push(Text(template[current:].to_owned()))
             break
           }
         }
@@ -618,16 +634,16 @@ fn parse_for_loop_modifiers(
   collection_str : String,
 ) -> (String, ForLoopModifiers) {
   let parts = collection_str.split(" ").collect()
-  let collection = parts[0].to_string()
+  let collection = parts[0].to_owned()
   let mut limit : Int? = None
   let mut offset : Int? = None
   let mut reversed = false
   let mut i = 1
   while i < parts.length() {
-    let part = parts[i].to_string()
+    let part = parts[i].to_owned()
     if part == "limit:" && i + 1 < parts.length() {
       // Get the next part as the limit value
-      let limit_str = parts[i + 1].to_string().trim(chars=" \t").to_string()
+      let limit_str = parts[i + 1].to_owned().trim(chars=" \t").to_owned()
       limit = match limit_str {
         "1" => Some(1)
         "2" => Some(2)
@@ -640,7 +656,7 @@ fn parse_for_loop_modifiers(
       i = i + 1 // Skip the next part since we consumed it
     } else if part == "offset:" && i + 1 < parts.length() {
       // Get the next part as the offset value
-      let offset_str = parts[i + 1].to_string().trim(chars=" \t").to_string()
+      let offset_str = parts[i + 1].to_owned().trim(chars=" \t").to_owned()
       offset = match offset_str {
         "0" => Some(0)
         "1" => Some(1)
@@ -1093,18 +1109,15 @@ pub fn evaluate_expression(
   expression : String,
   context : LiquidContext,
 ) -> LiquidValue {
-  let trimmed_expr = expression.trim(chars=" \t").to_string()
+  let trimmed_expr = expression.trim(chars=" \t").to_owned()
 
   // Check if it's a string literal (quoted)
   if trimmed_expr.length() >= 2 {
-    let first_char = trimmed_expr.substring(start=0, end=1)
-    let last_char = trimmed_expr.substring(start=trimmed_expr.length() - 1)
+    let first_char = trimmed_expr[0:1].to_owned()
+    let last_char = trimmed_expr[trimmed_expr.length() - 1:].to_owned()
     if (first_char == "'" && last_char == "'") ||
       (first_char == "\"" && last_char == "\"") {
-      let content = trimmed_expr.substring(
-        start=1,
-        end=trimmed_expr.length() - 1,
-      )
+      let content = trimmed_expr[1:trimmed_expr.length() - 1].to_owned()
       return string_value(content)
     }
   }
@@ -1148,18 +1161,18 @@ pub fn evaluate_expression(
 
 ///|
 pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
-  let trimmed_condition = condition.trim(chars=" \t").to_string()
+  let trimmed_condition = condition.trim(chars=" \t").to_owned()
 
   // Check for logical operators first
   if trimmed_condition.contains(" and ") {
     let parts = trimmed_condition.split(" and ").collect()
     if parts.length() == 2 {
       let left_result = evaluate_condition(
-        parts[0].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
         context,
       )
       let right_result = evaluate_condition(
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         context,
       )
       return left_result && right_result
@@ -1169,21 +1182,21 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split(" or ").collect()
     if parts.length() == 2 {
       let left_result = evaluate_condition(
-        parts[0].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
         context,
       )
       let right_result = evaluate_condition(
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         context,
       )
       return left_result || right_result
     }
   }
   if trimmed_condition.strip_prefix("not ") != None {
-    let inner_condition = trimmed_condition
-      .substring(start=4)
+    let inner_condition = trimmed_condition[4:]
+      .to_owned()
       .trim(chars=" \t")
-      .to_string()
+      .to_owned()
     return !evaluate_condition(inner_condition, context)
   }
 
@@ -1192,8 +1205,8 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split(">=").collect()
     if parts.length() == 2 {
       return compare_values(
-        parts[0].to_string().trim(chars=" \t").to_string(),
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         ">=",
         context,
       )
@@ -1203,8 +1216,8 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split("<=").collect()
     if parts.length() == 2 {
       return compare_values(
-        parts[0].to_string().trim(chars=" \t").to_string(),
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         "<=",
         context,
       )
@@ -1214,8 +1227,8 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split("!=").collect()
     if parts.length() == 2 {
       return compare_values(
-        parts[0].to_string().trim(chars=" \t").to_string(),
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         "!=",
         context,
       )
@@ -1225,8 +1238,8 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split("==").collect()
     if parts.length() == 2 {
       return compare_values(
-        parts[0].to_string().trim(chars=" \t").to_string(),
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         "==",
         context,
       )
@@ -1236,8 +1249,8 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split(">").collect()
     if parts.length() == 2 {
       return compare_values(
-        parts[0].to_string().trim(chars=" \t").to_string(),
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         ">",
         context,
       )
@@ -1247,8 +1260,8 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split("<").collect()
     if parts.length() == 2 {
       return compare_values(
-        parts[0].to_string().trim(chars=" \t").to_string(),
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         "<",
         context,
       )
@@ -1258,8 +1271,8 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     let parts = trimmed_condition.split(" contains ").collect()
     if parts.length() == 2 {
       return compare_values(
-        parts[0].to_string().trim(chars=" \t").to_string(),
-        parts[1].to_string().trim(chars=" \t").to_string(),
+        parts[0].to_owned().trim(chars=" \t").to_owned(),
+        parts[1].to_owned().trim(chars=" \t").to_owned(),
         "contains",
         context,
       )
@@ -1361,7 +1374,7 @@ pub fn apply_filter_with_params(
             50 // Default truncate length
           }
           if s.length() > max_length {
-            String(s.substring(start=0, end=max_length) + "...")
+            String(s[0:max_length].to_owned() + "...")
           } else {
             value
           }
@@ -1381,13 +1394,13 @@ pub fn apply_filter_with_params(
               "' -> '" => " -> "
               _ =>
                 if param.length() >= 2 &&
-                  param.substring(start=0, end=1) == "'" &&
-                  param.substring(start=param.length() - 1) == "'" {
-                  param.substring(start=1, end=param.length() - 1)
+                  param[0:1].to_owned() == "'" &&
+                  param[param.length() - 1:].to_owned() == "'" {
+                  param[1:param.length() - 1].to_owned()
                 } else if param.length() >= 2 &&
-                  param.substring(start=0, end=1) == "\"" &&
-                  param.substring(start=param.length() - 1) == "\"" {
-                  param.substring(start=1, end=param.length() - 1)
+                  param[0:1].to_owned() == "\"" &&
+                  param[param.length() - 1:].to_owned() == "\"" {
+                  param[1:param.length() - 1].to_owned()
                 } else {
                   param
                 }
@@ -1454,7 +1467,7 @@ pub fn apply_filter_with_params(
             start_pos + length
           }
           if start_pos < s.length() {
-            String(s.substring(start=start_pos, end=end_pos))
+            String(s[start_pos:end_pos].to_owned())
           } else {
             String("")
           }
@@ -1472,16 +1485,16 @@ pub fn apply_filter_with_params(
 
             // Remove quotes from parameters
             let old_str = if old_param.length() >= 2 &&
-              old_param.substring(start=0, end=1) == "'" &&
-              old_param.substring(start=old_param.length() - 1) == "'" {
-              old_param.substring(start=1, end=old_param.length() - 1)
+              old_param[0:1].to_owned() == "'" &&
+              old_param[old_param.length() - 1:].to_owned() == "'" {
+              old_param[1:old_param.length() - 1].to_owned()
             } else {
               old_param
             }
             let new_str = if new_param.length() >= 2 &&
-              new_param.substring(start=0, end=1) == "'" &&
-              new_param.substring(start=new_param.length() - 1) == "'" {
-              new_param.substring(start=1, end=new_param.length() - 1)
+              new_param[0:1].to_owned() == "'" &&
+              new_param[new_param.length() - 1:].to_owned() == "'" {
+              new_param[1:new_param.length() - 1].to_owned()
             } else {
               new_param
             }
@@ -1499,9 +1512,9 @@ pub fn apply_filter_with_params(
             // Parse target parameter
             let target_param = filter_obj.parameters[0]
             let target_str = if target_param.length() >= 2 &&
-              target_param.substring(start=0, end=1) == "'" &&
-              target_param.substring(start=target_param.length() - 1) == "'" {
-              target_param.substring(start=1, end=target_param.length() - 1)
+              target_param[0:1].to_owned() == "'" &&
+              target_param[target_param.length() - 1:].to_owned() == "'" {
+              target_param[1:target_param.length() - 1].to_owned()
             } else {
               target_param
             }
@@ -1518,9 +1531,9 @@ pub fn apply_filter_with_params(
           let delimiter = if filter_obj.parameters.length() > 0 {
             let delim_param = filter_obj.parameters[0]
             if delim_param.length() >= 2 &&
-              delim_param.substring(start=0, end=1) == "'" &&
-              delim_param.substring(start=delim_param.length() - 1) == "'" {
-              delim_param.substring(start=1, end=delim_param.length() - 1)
+              delim_param[0:1].to_owned() == "'" &&
+              delim_param[delim_param.length() - 1:].to_owned() == "'" {
+              delim_param[1:delim_param.length() - 1].to_owned()
             } else {
               delim_param
             }
@@ -1529,7 +1542,7 @@ pub fn apply_filter_with_params(
           }
           let parts = s.split(delimiter).collect()
           let liquid_parts = parts.map(fn(part) {
-            string_value(part.to_string())
+            string_value(part.to_owned())
           })
           Array(liquid_parts)
         }
@@ -1595,13 +1608,13 @@ pub fn apply_filter_with_params(
             let format_param = filter_obj.parameters[0]
             // Remove quotes from format parameter
             if format_param.length() >= 2 &&
-              format_param.substring(start=0, end=1) == "'" &&
-              format_param.substring(start=format_param.length() - 1) == "'" {
-              format_param.substring(start=1, end=format_param.length() - 1)
+              format_param[0:1].to_owned() == "'" &&
+              format_param[format_param.length() - 1:].to_owned() == "'" {
+              format_param[1:format_param.length() - 1].to_owned()
             } else if format_param.length() >= 2 &&
-              format_param.substring(start=0, end=1) == "\"" &&
-              format_param.substring(start=format_param.length() - 1) == "\"" {
-              format_param.substring(start=1, end=format_param.length() - 1)
+              format_param[0:1].to_owned() == "\"" &&
+              format_param[format_param.length() - 1:].to_owned() == "\"" {
+              format_param[1:format_param.length() - 1].to_owned()
             } else {
               format_param
             }
@@ -1651,16 +1664,16 @@ pub fn apply_filter_with_params(
 
             // Remove quotes from parameters
             let property = if property_param.length() >= 2 &&
-              property_param.substring(start=0, end=1) == "'" &&
-              property_param.substring(start=property_param.length() - 1) == "'" {
-              property_param.substring(start=1, end=property_param.length() - 1)
+              property_param[0:1].to_owned() == "'" &&
+              property_param[property_param.length() - 1:].to_owned() == "'" {
+              property_param[1:property_param.length() - 1].to_owned()
             } else {
               property_param
             }
             let target_value = if value_param.length() >= 2 &&
-              value_param.substring(start=0, end=1) == "'" &&
-              value_param.substring(start=value_param.length() - 1) == "'" {
-              value_param.substring(start=1, end=value_param.length() - 1)
+              value_param[0:1].to_owned() == "'" &&
+              value_param[value_param.length() - 1:].to_owned() == "'" {
+              value_param[1:value_param.length() - 1].to_owned()
             } else {
               value_param
             }
@@ -1702,25 +1715,24 @@ pub fn apply_filter_with_params(
 
             // Remove quotes from parameters
             let singular = if singular_param.length() >= 2 &&
-              singular_param.substring(start=0, end=1) == "\"" &&
-              singular_param.substring(start=singular_param.length() - 1) ==
-              "\"" {
-              singular_param.substring(start=1, end=singular_param.length() - 1)
+              singular_param[0:1].to_owned() == "\"" &&
+              singular_param[singular_param.length() - 1:].to_owned() == "\"" {
+              singular_param[1:singular_param.length() - 1].to_owned()
             } else if singular_param.length() >= 2 &&
-              singular_param.substring(start=0, end=1) == "'" &&
-              singular_param.substring(start=singular_param.length() - 1) == "'" {
-              singular_param.substring(start=1, end=singular_param.length() - 1)
+              singular_param[0:1].to_owned() == "'" &&
+              singular_param[singular_param.length() - 1:].to_owned() == "'" {
+              singular_param[1:singular_param.length() - 1].to_owned()
             } else {
               singular_param
             }
             let plural = if plural_param.length() >= 2 &&
-              plural_param.substring(start=0, end=1) == "\"" &&
-              plural_param.substring(start=plural_param.length() - 1) == "\"" {
-              plural_param.substring(start=1, end=plural_param.length() - 1)
+              plural_param[0:1].to_owned() == "\"" &&
+              plural_param[plural_param.length() - 1:].to_owned() == "\"" {
+              plural_param[1:plural_param.length() - 1].to_owned()
             } else if plural_param.length() >= 2 &&
-              plural_param.substring(start=0, end=1) == "'" &&
-              plural_param.substring(start=plural_param.length() - 1) == "'" {
-              plural_param.substring(start=1, end=plural_param.length() - 1)
+              plural_param[0:1].to_owned() == "'" &&
+              plural_param[plural_param.length() - 1:].to_owned() == "'" {
+              plural_param[1:plural_param.length() - 1].to_owned()
             } else {
               plural_param
             }
@@ -1742,9 +1754,9 @@ pub fn apply_filter_with_params(
             // Parse property parameter
             let property_param = filter_obj.parameters[0]
             let property = if property_param.length() >= 2 &&
-              property_param.substring(start=0, end=1) == "'" &&
-              property_param.substring(start=property_param.length() - 1) == "'" {
-              property_param.substring(start=1, end=property_param.length() - 1)
+              property_param[0:1].to_owned() == "'" &&
+              property_param[property_param.length() - 1:].to_owned() == "'" {
+              property_param[1:property_param.length() - 1].to_owned()
             } else {
               property_param
             }
@@ -1828,9 +1840,9 @@ pub fn apply_filter_with_params(
             // Parse property parameter for map
             let property_param = filter_obj.parameters[0]
             let property = if property_param.length() >= 2 &&
-              property_param.substring(start=0, end=1) == "'" &&
-              property_param.substring(start=property_param.length() - 1) == "'" {
-              property_param.substring(start=1, end=property_param.length() - 1)
+              property_param[0:1].to_owned() == "'" &&
+              property_param[property_param.length() - 1:].to_owned() == "'" {
+              property_param[1:property_param.length() - 1].to_owned()
             } else {
               property_param
             }
@@ -1873,7 +1885,7 @@ pub fn apply_filter_with_params(
             if words.length() > word_count {
               let truncated_words : Array[String] = []
               for i in 0..<word_count {
-                truncated_words.push(words[i].to_string())
+                truncated_words.push(words[i].to_owned())
               }
               String(truncated_words.join(" ") + "...")
             } else {
@@ -1909,14 +1921,14 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       }
     "trim" | "strip" =>
       match value {
-        String(s) => String(s.trim(chars=" \t\n\r").to_string())
+        String(s) => String(s.trim(chars=" \t\n\r").to_owned())
         _ => value
       }
     "size" | "length" =>
       match value {
         String(s) => Number(s.length().to_double())
         Array(arr) => Number(arr.length().to_double())
-        Object(obj) => Number(obj.size().to_double())
+        Object(obj) => Number(obj.length().to_double())
         _ => Number(0.0)
       }
     "first" =>
@@ -1924,7 +1936,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         Array(arr) => if arr.length() > 0 { arr[0] } else { Null }
         String(s) =>
           if s.length() > 0 {
-            String(s.substring(start=0, end=1))
+            String(s[0:1].to_owned())
           } else {
             Null
           }
@@ -1940,7 +1952,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           }
         String(s) =>
           if s.length() > 0 {
-            String(s.substring(start=s.length() - 1))
+            String(s[s.length() - 1:].to_owned())
           } else {
             Null
           }
@@ -1962,7 +1974,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           let mut reversed = ""
           let mut i = chars.length() - 1
           while i >= 0 {
-            reversed = reversed + chars.substring(start=i, end=i + 1)
+            reversed = reversed + chars[i:i + 1].to_owned()
             i = i - 1
           }
           String(reversed)
@@ -2028,7 +2040,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         String(s) => {
           let max_length = 50 // Default truncate length
           if s.length() > max_length {
-            String(s.substring(start=0, end=max_length) + "...")
+            String(s[0:max_length].to_owned() + "...")
           } else {
             value
           }
@@ -2173,12 +2185,12 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       }
     "lstrip" =>
       match value {
-        String(s) => String(s.trim_start(chars=" \t\n\r").to_string())
+        String(s) => String(s.trim_start(chars=" \t\n\r").to_owned())
         _ => value
       }
     "rstrip" =>
       match value {
-        String(s) => String(s.trim_end(chars=" \t\n\r").to_string())
+        String(s) => String(s.trim_end(chars=" \t\n\r").to_owned())
         _ => value
       }
     "truncatewords" =>
@@ -2189,7 +2201,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           if words.length() > 15 {
             let truncated_words : Array[String] = []
             for i in 0..<15 {
-              truncated_words.push(words[i].to_string())
+              truncated_words.push(words[i].to_owned())
             }
             String(truncated_words.join(" ") + "...")
           } else {
@@ -2235,7 +2247,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
             prev_length = result.length()
             result = result.replace(old="  ", new=" ")
           }
-          String(result.trim(chars=" ").to_string())
+          String(result.trim(chars=" ").to_owned())
         }
         _ => value
       }
@@ -2341,7 +2353,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           if date_str.contains("2023") ||
             date_str.contains("2024") ||
             date_str.contains("2025") {
-            String("January 01, " + date_str.substring(start=0, end=4))
+            String("January 01, " + date_str[0:4].to_owned())
           } else {
             String(date_str + " (formatted)")
           }
@@ -2372,9 +2384,9 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       match value {
         String(s) =>
           if s.length() > 0 {
-            let first_char = s.substring(start=0, end=1).to_upper()
+            let first_char = s[0:1].to_owned().to_upper()
             let rest = if s.length() > 1 {
-              s.substring(start=1).to_lower()
+              s[1:].to_owned().to_lower()
             } else {
               ""
             }
@@ -2389,7 +2401,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         String(s) => {
           let parts = s.split(" ").collect() // Default split on space
           let liquid_parts = parts.map(fn(part) {
-            string_value(part.to_string())
+            string_value(part.to_owned())
           })
           Array(liquid_parts)
         }
@@ -2488,7 +2500,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
     "relative_url" =>
       match value {
         String(s) =>
-          if s.substring(start=0, end=1) == "/" {
+          if s[0:1].to_owned() == "/" {
             value
           } else {
             String("/" + s)
@@ -2524,7 +2536,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         String(s) =>
           // Slice string - take first 3 characters
           if s.length() > 3 {
-            String(s.substring(start=0, end=3))
+            String(s[0:3].to_owned())
           } else {
             value
           }
@@ -2600,7 +2612,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         Number(n) => {
           let str_val = n.to_string()
           if str_val.strip_suffix(".0") != None {
-            String("$" + str_val.substring(start=0, end=str_val.length() - 2))
+            String("$" + str_val[0:str_val.length() - 2].to_owned())
           } else {
             String("$" + str_val)
           }
