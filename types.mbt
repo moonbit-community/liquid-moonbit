@@ -8,7 +8,7 @@ pub enum LiquidValue {
   Array(Array[LiquidValue])
   Object(Map[String, LiquidValue])
   Null
-} derive(ToJson(style="flat"))
+} derive(ToJson)
 
 /// Error handling policies
 
@@ -17,7 +17,7 @@ pub enum ErrorPolicy {
   Strict // Fail on errors
   Warn // Print warnings but continue
   Silent // Ignore errors silently
-} derive(ToJson(style="flat"))
+} derive(ToJson)
 
 // Context for variable storage
 
@@ -79,7 +79,7 @@ pub enum LiquidNode {
   Layout(String) // layout template name
   Block(String, Array[LiquidNode]) // block_name, default_content
   Content // placeholder for main content in layouts
-} derive(ToJson(style="flat"))
+} derive(ToJson)
 
 // Whitespace control flags
 
@@ -90,7 +90,10 @@ pub struct WhitespaceControl {
 } derive(ToJson)
 
 ///|
-pub fn whitespace_control(strip_left : Bool, strip_right : Bool) -> WhitespaceControl {
+pub fn whitespace_control(
+  strip_left : Bool,
+  strip_right : Bool,
+) -> WhitespaceControl {
   { strip_left, strip_right }
 }
 
@@ -110,15 +113,17 @@ pub struct TemplateWithLayout {
 
 ///|
 pub fn template_with_layout(
-  nodes : Array[LiquidNode], 
-  layout : String?, 
-  blocks : Map[String, Array[LiquidNode]]
+  nodes : Array[LiquidNode],
+  layout : String?,
+  blocks : Map[String, Array[LiquidNode]],
 ) -> TemplateWithLayout {
   { nodes, layout, blocks }
 }
 
 ///|
-pub fn simple_template_with_layout(nodes : Array[LiquidNode]) -> TemplateWithLayout {
+pub fn simple_template_with_layout(
+  nodes : Array[LiquidNode],
+) -> TemplateWithLayout {
   { nodes, layout: None, blocks: Map::new() }
 }
 
