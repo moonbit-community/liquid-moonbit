@@ -246,11 +246,17 @@ fn parse_template(template : String) -> Array[LiquidNode] {
 
             // Parse variable and filters
             let parts = trimmed_content.split("|").collect()
-            let variable_name = parts[0].to_string().trim(chars=" \t").to_string()
+            let variable_name = parts[0]
+              .to_string()
+              .trim(chars=" \t")
+              .to_string()
             let filters = if parts.length() > 1 {
               let filter_objs : Array[Filter] = []
               for i in 1..<parts.length() {
-                let filter_str = parts[i].to_string().trim(chars=" \t").to_string()
+                let filter_str = parts[i]
+                  .to_string()
+                  .trim(chars=" \t")
+                  .to_string()
                 // Parse filter parameters (e.g., "truncate: 50" or "slice: 1, 3")
                 if filter_str.contains(":") {
                   let filter_parts = filter_str.split(":").collect()
@@ -337,7 +343,10 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               if for_content.contains(" in ") {
                 let parts = for_content.split(" in ").collect()
                 if parts.length() == 2 {
-                  let loop_var = parts[0].to_string().trim(chars=" \t").to_string()
+                  let loop_var = parts[0]
+                    .to_string()
+                    .trim(chars=" \t")
+                    .to_string()
                   let collection_and_modifiers = parts[1]
                     .to_string()
                     .trim(chars=" \t")
@@ -409,7 +418,10 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               if tablerow_content.contains(" in ") {
                 let parts = tablerow_content.split(" in ").collect()
                 if parts.length() == 2 {
-                  let loop_var = parts[0].to_string().trim(chars=" \t").to_string()
+                  let loop_var = parts[0]
+                    .to_string()
+                    .trim(chars=" \t")
+                    .to_string()
                   let rest = parts[1].to_string().trim(chars=" \t").to_string()
 
                   // Parse collection and cols
@@ -491,8 +503,14 @@ fn parse_template(template : String) -> Array[LiquidNode] {
                 .to_string()
               let parts = assign_content.split("=").collect()
               if parts.length() >= 2 {
-                let var_name = parts[0].to_string().trim(chars=" \t").to_string()
-                let expression = parts[1].to_string().trim(chars=" \t").to_string()
+                let var_name = parts[0]
+                  .to_string()
+                  .trim(chars=" \t")
+                  .to_string()
+                let expression = parts[1]
+                  .to_string()
+                  .trim(chars=" \t")
+                  .to_string()
                 nodes.push(Assign(var_name, expression))
               } else {
                 nodes.push(Comment(trimmed_content))
@@ -526,11 +544,17 @@ fn parse_template(template : String) -> Array[LiquidNode] {
                 .to_string()
               // Parse variable and filters (similar to variable parsing)
               let parts = echo_content.split("|").collect()
-              let variable_name = parts[0].to_string().trim(chars=" \t").to_string()
+              let variable_name = parts[0]
+                .to_string()
+                .trim(chars=" \t")
+                .to_string()
               let filters = if parts.length() > 1 {
                 let filter_objs : Array[Filter] = []
                 for i in 1..<parts.length() {
-                  let filter_str = parts[i].to_string().trim(chars=" \t").to_string()
+                  let filter_str = parts[i]
+                    .to_string()
+                    .trim(chars=" \t")
+                    .to_string()
                   if filter_str.contains(":") {
                     let filter_parts = filter_str.split(":").collect()
                     let filter_name = filter_parts[0]
@@ -1641,7 +1665,8 @@ pub fn apply_filter_with_params(
             // Remove quotes from parameters
             let property = if property_param.length() >= 2 &&
               slice_string(property_param, 0, 1) == "'" &&
-              slice_string_from(property_param, property_param.length() - 1) == "'" {
+              slice_string_from(property_param, property_param.length() - 1) ==
+              "'" {
               slice_string(property_param, 1, property_param.length() - 1)
             } else {
               property_param
@@ -1697,7 +1722,8 @@ pub fn apply_filter_with_params(
               slice_string(singular_param, 1, singular_param.length() - 1)
             } else if singular_param.length() >= 2 &&
               slice_string(singular_param, 0, 1) == "'" &&
-              slice_string_from(singular_param, singular_param.length() - 1) == "'" {
+              slice_string_from(singular_param, singular_param.length() - 1) ==
+              "'" {
               slice_string(singular_param, 1, singular_param.length() - 1)
             } else {
               singular_param
@@ -1732,7 +1758,8 @@ pub fn apply_filter_with_params(
             let property_param = filter_obj.parameters[0]
             let property = if property_param.length() >= 2 &&
               slice_string(property_param, 0, 1) == "'" &&
-              slice_string_from(property_param, property_param.length() - 1) == "'" {
+              slice_string_from(property_param, property_param.length() - 1) ==
+              "'" {
               slice_string(property_param, 1, property_param.length() - 1)
             } else {
               property_param
@@ -1818,7 +1845,8 @@ pub fn apply_filter_with_params(
             let property_param = filter_obj.parameters[0]
             let property = if property_param.length() >= 2 &&
               slice_string(property_param, 0, 1) == "'" &&
-              slice_string_from(property_param, property_param.length() - 1) == "'" {
+              slice_string_from(property_param, property_param.length() - 1) ==
+              "'" {
               slice_string(property_param, 1, property_param.length() - 1)
             } else {
               property_param
