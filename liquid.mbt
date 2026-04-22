@@ -1905,7 +1905,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       match value {
         String(s) => Number(s.length().to_double())
         Array(arr) => Number(arr.length().to_double())
-        Object(obj) => Number(obj.size().to_double())
+        Object(obj) => Number(obj.length().to_double())
         _ => Number(0.0)
       }
     "first" =>
