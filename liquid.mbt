@@ -71,6 +71,16 @@ fn handle_error(context : LiquidContext, message : String) -> String {
 }
 
 ///|
+fn slice_string(source : String, start : Int, stop : Int) -> String {
+  source[start:stop].to_string()
+}
+
+///|
+fn slice_string_from(source : String, start : Int) -> String {
+  source[start:].to_string()
+}
+
+///|
 #alias(op_set)
 pub fn LiquidContext::set(
   self : LiquidContext,
@@ -142,7 +152,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
   let len = template.length()
   while current < len {
     // Find next liquid tag from current position (either {{ or {% )
-    let remaining = template.substring(start=current)
+    let remaining = slice_string_from(template, current)
     let variable_tag = remaining.find("{{")
     let logic_tag = remaining.find("{%")
     // Whitespace control detection
@@ -197,7 +207,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
       (None, None, None, None) => {
         // No more tags, add remaining text
         if current < len {
-          nodes.push(Text(template.substring(start=current)))
+          nodes.push(Text(slice_string_from(template, current)))
         }
         break
       }
@@ -206,7 +216,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
 
     // Add text before tag (with whitespace control)
     if start > current {
-      let mut text = template.substring(start=current, end=start)
+      let mut text = slice_string(template, current, start)
 
       // Apply whitespace control if previous tag had strip_right
       if nodes.length() > 0 {
@@ -227,20 +237,26 @@ fn parse_template(template : String) -> Array[LiquidNode] {
     match tag_type {
       "variable" => {
         let search_start = start + 2
-        let tag_remaining = template.substring(start=search_start)
+        let tag_remaining = slice_string_from(template, search_start)
         match tag_remaining.find("}}") {
           Some(relative_end) => {
             let end = search_start + relative_end
-            let tag_content = template.substring(start=start + 2, end~)
+            let tag_content = slice_string(template, start + 2, end)
             let trimmed_content = tag_content.to_string()
 
             // Parse variable and filters
             let parts = trimmed_content.split("|").collect()
-            let variable_name = parts[0].to_string().trim(chars=" \t").to_string()
+            let variable_name = parts[0]
+              .to_string()
+              .trim(chars=" \t")
+              .to_string()
             let filters = if parts.length() > 1 {
               let filter_objs : Array[Filter] = []
               for i in 1..<parts.length() {
-                let filter_str = parts[i].to_string().trim(chars=" \t").to_string()
+                let filter_str = parts[i]
+                  .to_string()
+                  .trim(chars=" \t")
+                  .to_string()
                 // Parse filter parameters (e.g., "truncate: 50" or "slice: 1, 3")
                 if filter_str.contains(":") {
                   let filter_parts = filter_str.split(":").collect()
@@ -283,18 +299,18 @@ fn parse_template(template : String) -> Array[LiquidNode] {
           }
           None => {
             // Malformed tag, treat as text
-            nodes.push(Text(template.substring(start=current)))
+            nodes.push(Text(slice_string_from(template, current)))
             break
           }
         }
       }
       "logic" => {
         let search_start = start + 2
-        let tag_remaining = template.substring(start=search_start)
+        let tag_remaining = slice_string_from(template, search_start)
         match tag_remaining.find("%}") {
           Some(relative_end) => {
             let end = search_start + relative_end
-            let tag_content = template.substring(start=start + 2, end~)
+            let tag_content = slice_string(template, start + 2, end)
             let trimmed_content = tag_content
               .to_string()
               .trim(chars=" \t")
@@ -305,8 +321,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Comment(trimmed_content))
             } else if trimmed_content.strip_prefix("if ") != None {
               // Parse if statement: {% if condition %}...{% endif %}
-              let condition = trimmed_content
-                .substring(start=3)
+              let condition = slice_string_from(trimmed_content, 3)
                 .trim(chars=" \t")
                 .to_string()
               // Create if node with actual condition evaluation and elsif support
@@ -322,14 +337,16 @@ fn parse_template(template : String) -> Array[LiquidNode] {
             } else if trimmed_content.strip_prefix("for ") != None {
               // Parse for loop: {% for item in collection %}...{% endfor %}
               // Also supports: {% for item in collection limit: 5 offset: 2 reversed %}
-              let for_content = trimmed_content
-                .substring(start=4)
+              let for_content = slice_string_from(trimmed_content, 4)
                 .trim(chars=" \t")
                 .to_string()
               if for_content.contains(" in ") {
                 let parts = for_content.split(" in ").collect()
                 if parts.length() == 2 {
-                  let loop_var = parts[0].to_string().trim(chars=" \t").to_string()
+                  let loop_var = parts[0]
+                    .to_string()
+                    .trim(chars=" \t")
+                    .to_string()
                   let collection_and_modifiers = parts[1]
                     .to_string()
                     .trim(chars=" \t")
@@ -355,8 +372,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               }
             } else if trimmed_content.strip_prefix("case ") != None {
               // Parse case statement: {% case expression %}...{% endcase %}
-              let expression = trimmed_content
-                .substring(start=5)
+              let expression = slice_string_from(trimmed_content, 5)
                 .trim(chars=" \t")
                 .to_string()
               // Create case with sample when branches
@@ -374,23 +390,20 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               )
             } else if trimmed_content.strip_prefix("when ") != None {
               // Parse when statement: {% when 'value' %}
-              let when_value = trimmed_content
-                .substring(start=5)
+              let when_value = slice_string_from(trimmed_content, 5)
                 .trim(chars=" \t")
                 .to_string()
               // For now, treat as comment since when is part of case parsing
               nodes.push(Comment("when " + when_value))
             } else if trimmed_content.strip_prefix("unless ") != None {
               // Parse unless statement: {% unless condition %}...{% endunless %}
-              let condition = trimmed_content
-                .substring(start=7)
+              let condition = slice_string_from(trimmed_content, 7)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Unless(condition, [text_node("UNLESS_TRUE")]))
             } else if trimmed_content.strip_prefix("cycle ") != None {
               // Parse cycle tag: {% cycle 'group1': 'value1', 'value2', 'value3' %}
-              let _cycle_content = trimmed_content
-                .substring(start=6)
+              let _cycle_content = slice_string_from(trimmed_content, 6)
                 .trim(chars=" \t")
                 .to_string()
               // Simple cycle parsing - for now just use default values
@@ -399,14 +412,16 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Cycle(cycle_name, cycle_values))
             } else if trimmed_content.strip_prefix("tablerow ") != None {
               // Parse tablerow tag: {% tablerow item in collection cols: 3 %}
-              let tablerow_content = trimmed_content
-                .substring(start=10)
+              let tablerow_content = slice_string_from(trimmed_content, 10)
                 .trim(chars=" \t")
                 .to_string()
               if tablerow_content.contains(" in ") {
                 let parts = tablerow_content.split(" in ").collect()
                 if parts.length() == 2 {
-                  let loop_var = parts[0].to_string().trim(chars=" \t").to_string()
+                  let loop_var = parts[0]
+                    .to_string()
+                    .trim(chars=" \t")
+                    .to_string()
                   let rest = parts[1].to_string().trim(chars=" \t").to_string()
 
                   // Parse collection and cols
@@ -462,8 +477,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Liquid([text_node("LIQUID_BLOCK")]))
             } else if trimmed_content.strip_prefix("section ") != None {
               // Parse section tag: {% section 'section-name' %}
-              let section_name = trimmed_content
-                .substring(start=8)
+              let section_name = slice_string_from(trimmed_content, 8)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Section(section_name))
@@ -472,36 +486,38 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Style("CSS_CONTENT"))
             } else if trimmed_content.strip_prefix("include ") != None {
               // Parse include tag: {% include 'template-name' %}
-              let template_name = trimmed_content
-                .substring(start=8)
+              let template_name = slice_string_from(trimmed_content, 8)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Include(template_name))
             } else if trimmed_content.strip_prefix("render ") != None {
               // Parse render tag: {% render 'template-name' %}
-              let template_name = trimmed_content
-                .substring(start=7)
+              let template_name = slice_string_from(trimmed_content, 7)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Render(template_name))
             } else if trimmed_content.strip_prefix("assign ") != None {
               // Parse assign tag: {% assign var = value %}
-              let assign_content = trimmed_content
-                .substring(start=7)
+              let assign_content = slice_string_from(trimmed_content, 7)
                 .trim(chars=" \t")
                 .to_string()
               let parts = assign_content.split("=").collect()
               if parts.length() >= 2 {
-                let var_name = parts[0].to_string().trim(chars=" \t").to_string()
-                let expression = parts[1].to_string().trim(chars=" \t").to_string()
+                let var_name = parts[0]
+                  .to_string()
+                  .trim(chars=" \t")
+                  .to_string()
+                let expression = parts[1]
+                  .to_string()
+                  .trim(chars=" \t")
+                  .to_string()
                 nodes.push(Assign(var_name, expression))
               } else {
                 nodes.push(Comment(trimmed_content))
               }
             } else if trimmed_content.strip_prefix("capture ") != None {
               // Parse capture tag: {% capture var %}...{% endcapture %}
-              let capture_var = trimmed_content
-                .substring(start=8)
+              let capture_var = slice_string_from(trimmed_content, 8)
                 .trim(chars=" \t")
                 .to_string()
               // Create capture node with sample content
@@ -511,31 +527,34 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Raw("{{ not_processed }} liquid code"))
             } else if trimmed_content.strip_prefix("increment ") != None {
               // Parse increment tag: {% increment variable %}
-              let var_name = trimmed_content
-                .substring(start=10)
+              let var_name = slice_string_from(trimmed_content, 10)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Increment(var_name))
             } else if trimmed_content.strip_prefix("decrement ") != None {
               // Parse decrement tag: {% decrement variable %}
-              let var_name = trimmed_content
-                .substring(start=10)
+              let var_name = slice_string_from(trimmed_content, 10)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Decrement(var_name))
             } else if trimmed_content.strip_prefix("echo ") != None {
               // Parse echo tag: {% echo variable | filter %}
-              let echo_content = trimmed_content
-                .substring(start=5)
+              let echo_content = slice_string_from(trimmed_content, 5)
                 .trim(chars=" \t")
                 .to_string()
               // Parse variable and filters (similar to variable parsing)
               let parts = echo_content.split("|").collect()
-              let variable_name = parts[0].to_string().trim(chars=" \t").to_string()
+              let variable_name = parts[0]
+                .to_string()
+                .trim(chars=" \t")
+                .to_string()
               let filters = if parts.length() > 1 {
                 let filter_objs : Array[Filter] = []
                 for i in 1..<parts.length() {
-                  let filter_str = parts[i].to_string().trim(chars=" \t").to_string()
+                  let filter_str = parts[i]
+                    .to_string()
+                    .trim(chars=" \t")
+                    .to_string()
                   if filter_str.contains(":") {
                     let filter_parts = filter_str.split(":").collect()
                     let filter_name = filter_parts[0]
@@ -577,15 +596,13 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(IfChanged([text_node("CHANGED_CONTENT")]))
             } else if trimmed_content.strip_prefix("layout ") != None {
               // Parse layout tag: {% layout 'template-name' %}
-              let layout_name = trimmed_content
-                .substring(start=7)
+              let layout_name = slice_string_from(trimmed_content, 7)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Layout(layout_name))
             } else if trimmed_content.strip_prefix("block ") != None {
               // Parse block tag: {% block 'block-name' %}...{% endblock %}
-              let block_name = trimmed_content
-                .substring(start=6)
+              let block_name = slice_string_from(trimmed_content, 6)
                 .trim(chars=" \t")
                 .to_string()
               nodes.push(Block(block_name, [text_node("BLOCK_CONTENT")]))
@@ -600,7 +617,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
           }
           None => {
             // Malformed tag, treat as text
-            nodes.push(Text(template.substring(start=current)))
+            nodes.push(Text(slice_string_from(template, current)))
             break
           }
         }
@@ -1097,14 +1114,11 @@ pub fn evaluate_expression(
 
   // Check if it's a string literal (quoted)
   if trimmed_expr.length() >= 2 {
-    let first_char = trimmed_expr.substring(start=0, end=1)
-    let last_char = trimmed_expr.substring(start=trimmed_expr.length() - 1)
+    let first_char = slice_string(trimmed_expr, 0, 1)
+    let last_char = slice_string_from(trimmed_expr, trimmed_expr.length() - 1)
     if (first_char == "'" && last_char == "'") ||
       (first_char == "\"" && last_char == "\"") {
-      let content = trimmed_expr.substring(
-        start=1,
-        end=trimmed_expr.length() - 1,
-      )
+      let content = slice_string(trimmed_expr, 1, trimmed_expr.length() - 1)
       return string_value(content)
     }
   }
@@ -1180,8 +1194,7 @@ pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
     }
   }
   if trimmed_condition.strip_prefix("not ") != None {
-    let inner_condition = trimmed_condition
-      .substring(start=4)
+    let inner_condition = slice_string_from(trimmed_condition, 4)
       .trim(chars=" \t")
       .to_string()
     return !evaluate_condition(inner_condition, context)
@@ -1361,7 +1374,7 @@ pub fn apply_filter_with_params(
             50 // Default truncate length
           }
           if s.length() > max_length {
-            String(s.substring(start=0, end=max_length) + "...")
+            String(slice_string(s, 0, max_length) + "...")
           } else {
             value
           }
@@ -1381,13 +1394,13 @@ pub fn apply_filter_with_params(
               "' -> '" => " -> "
               _ =>
                 if param.length() >= 2 &&
-                  param.substring(start=0, end=1) == "'" &&
-                  param.substring(start=param.length() - 1) == "'" {
-                  param.substring(start=1, end=param.length() - 1)
+                  slice_string(param, 0, 1) == "'" &&
+                  slice_string_from(param, param.length() - 1) == "'" {
+                  slice_string(param, 1, param.length() - 1)
                 } else if param.length() >= 2 &&
-                  param.substring(start=0, end=1) == "\"" &&
-                  param.substring(start=param.length() - 1) == "\"" {
-                  param.substring(start=1, end=param.length() - 1)
+                  slice_string(param, 0, 1) == "\"" &&
+                  slice_string_from(param, param.length() - 1) == "\"" {
+                  slice_string(param, 1, param.length() - 1)
                 } else {
                   param
                 }
@@ -1454,7 +1467,7 @@ pub fn apply_filter_with_params(
             start_pos + length
           }
           if start_pos < s.length() {
-            String(s.substring(start=start_pos, end=end_pos))
+            String(slice_string(s, start_pos, end_pos))
           } else {
             String("")
           }
@@ -1472,16 +1485,16 @@ pub fn apply_filter_with_params(
 
             // Remove quotes from parameters
             let old_str = if old_param.length() >= 2 &&
-              old_param.substring(start=0, end=1) == "'" &&
-              old_param.substring(start=old_param.length() - 1) == "'" {
-              old_param.substring(start=1, end=old_param.length() - 1)
+              slice_string(old_param, 0, 1) == "'" &&
+              slice_string_from(old_param, old_param.length() - 1) == "'" {
+              slice_string(old_param, 1, old_param.length() - 1)
             } else {
               old_param
             }
             let new_str = if new_param.length() >= 2 &&
-              new_param.substring(start=0, end=1) == "'" &&
-              new_param.substring(start=new_param.length() - 1) == "'" {
-              new_param.substring(start=1, end=new_param.length() - 1)
+              slice_string(new_param, 0, 1) == "'" &&
+              slice_string_from(new_param, new_param.length() - 1) == "'" {
+              slice_string(new_param, 1, new_param.length() - 1)
             } else {
               new_param
             }
@@ -1499,9 +1512,9 @@ pub fn apply_filter_with_params(
             // Parse target parameter
             let target_param = filter_obj.parameters[0]
             let target_str = if target_param.length() >= 2 &&
-              target_param.substring(start=0, end=1) == "'" &&
-              target_param.substring(start=target_param.length() - 1) == "'" {
-              target_param.substring(start=1, end=target_param.length() - 1)
+              slice_string(target_param, 0, 1) == "'" &&
+              slice_string_from(target_param, target_param.length() - 1) == "'" {
+              slice_string(target_param, 1, target_param.length() - 1)
             } else {
               target_param
             }
@@ -1518,9 +1531,9 @@ pub fn apply_filter_with_params(
           let delimiter = if filter_obj.parameters.length() > 0 {
             let delim_param = filter_obj.parameters[0]
             if delim_param.length() >= 2 &&
-              delim_param.substring(start=0, end=1) == "'" &&
-              delim_param.substring(start=delim_param.length() - 1) == "'" {
-              delim_param.substring(start=1, end=delim_param.length() - 1)
+              slice_string(delim_param, 0, 1) == "'" &&
+              slice_string_from(delim_param, delim_param.length() - 1) == "'" {
+              slice_string(delim_param, 1, delim_param.length() - 1)
             } else {
               delim_param
             }
@@ -1595,13 +1608,13 @@ pub fn apply_filter_with_params(
             let format_param = filter_obj.parameters[0]
             // Remove quotes from format parameter
             if format_param.length() >= 2 &&
-              format_param.substring(start=0, end=1) == "'" &&
-              format_param.substring(start=format_param.length() - 1) == "'" {
-              format_param.substring(start=1, end=format_param.length() - 1)
+              slice_string(format_param, 0, 1) == "'" &&
+              slice_string_from(format_param, format_param.length() - 1) == "'" {
+              slice_string(format_param, 1, format_param.length() - 1)
             } else if format_param.length() >= 2 &&
-              format_param.substring(start=0, end=1) == "\"" &&
-              format_param.substring(start=format_param.length() - 1) == "\"" {
-              format_param.substring(start=1, end=format_param.length() - 1)
+              slice_string(format_param, 0, 1) == "\"" &&
+              slice_string_from(format_param, format_param.length() - 1) == "\"" {
+              slice_string(format_param, 1, format_param.length() - 1)
             } else {
               format_param
             }
@@ -1651,16 +1664,17 @@ pub fn apply_filter_with_params(
 
             // Remove quotes from parameters
             let property = if property_param.length() >= 2 &&
-              property_param.substring(start=0, end=1) == "'" &&
-              property_param.substring(start=property_param.length() - 1) == "'" {
-              property_param.substring(start=1, end=property_param.length() - 1)
+              slice_string(property_param, 0, 1) == "'" &&
+              slice_string_from(property_param, property_param.length() - 1) ==
+              "'" {
+              slice_string(property_param, 1, property_param.length() - 1)
             } else {
               property_param
             }
             let target_value = if value_param.length() >= 2 &&
-              value_param.substring(start=0, end=1) == "'" &&
-              value_param.substring(start=value_param.length() - 1) == "'" {
-              value_param.substring(start=1, end=value_param.length() - 1)
+              slice_string(value_param, 0, 1) == "'" &&
+              slice_string_from(value_param, value_param.length() - 1) == "'" {
+              slice_string(value_param, 1, value_param.length() - 1)
             } else {
               value_param
             }
@@ -1702,25 +1716,26 @@ pub fn apply_filter_with_params(
 
             // Remove quotes from parameters
             let singular = if singular_param.length() >= 2 &&
-              singular_param.substring(start=0, end=1) == "\"" &&
-              singular_param.substring(start=singular_param.length() - 1) ==
+              slice_string(singular_param, 0, 1) == "\"" &&
+              slice_string_from(singular_param, singular_param.length() - 1) ==
               "\"" {
-              singular_param.substring(start=1, end=singular_param.length() - 1)
+              slice_string(singular_param, 1, singular_param.length() - 1)
             } else if singular_param.length() >= 2 &&
-              singular_param.substring(start=0, end=1) == "'" &&
-              singular_param.substring(start=singular_param.length() - 1) == "'" {
-              singular_param.substring(start=1, end=singular_param.length() - 1)
+              slice_string(singular_param, 0, 1) == "'" &&
+              slice_string_from(singular_param, singular_param.length() - 1) ==
+              "'" {
+              slice_string(singular_param, 1, singular_param.length() - 1)
             } else {
               singular_param
             }
             let plural = if plural_param.length() >= 2 &&
-              plural_param.substring(start=0, end=1) == "\"" &&
-              plural_param.substring(start=plural_param.length() - 1) == "\"" {
-              plural_param.substring(start=1, end=plural_param.length() - 1)
+              slice_string(plural_param, 0, 1) == "\"" &&
+              slice_string_from(plural_param, plural_param.length() - 1) == "\"" {
+              slice_string(plural_param, 1, plural_param.length() - 1)
             } else if plural_param.length() >= 2 &&
-              plural_param.substring(start=0, end=1) == "'" &&
-              plural_param.substring(start=plural_param.length() - 1) == "'" {
-              plural_param.substring(start=1, end=plural_param.length() - 1)
+              slice_string(plural_param, 0, 1) == "'" &&
+              slice_string_from(plural_param, plural_param.length() - 1) == "'" {
+              slice_string(plural_param, 1, plural_param.length() - 1)
             } else {
               plural_param
             }
@@ -1742,9 +1757,10 @@ pub fn apply_filter_with_params(
             // Parse property parameter
             let property_param = filter_obj.parameters[0]
             let property = if property_param.length() >= 2 &&
-              property_param.substring(start=0, end=1) == "'" &&
-              property_param.substring(start=property_param.length() - 1) == "'" {
-              property_param.substring(start=1, end=property_param.length() - 1)
+              slice_string(property_param, 0, 1) == "'" &&
+              slice_string_from(property_param, property_param.length() - 1) ==
+              "'" {
+              slice_string(property_param, 1, property_param.length() - 1)
             } else {
               property_param
             }
@@ -1828,9 +1844,10 @@ pub fn apply_filter_with_params(
             // Parse property parameter for map
             let property_param = filter_obj.parameters[0]
             let property = if property_param.length() >= 2 &&
-              property_param.substring(start=0, end=1) == "'" &&
-              property_param.substring(start=property_param.length() - 1) == "'" {
-              property_param.substring(start=1, end=property_param.length() - 1)
+              slice_string(property_param, 0, 1) == "'" &&
+              slice_string_from(property_param, property_param.length() - 1) ==
+              "'" {
+              slice_string(property_param, 1, property_param.length() - 1)
             } else {
               property_param
             }
@@ -1916,7 +1933,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       match value {
         String(s) => Number(s.length().to_double())
         Array(arr) => Number(arr.length().to_double())
-        Object(obj) => Number(obj.size().to_double())
+        Object(obj) => Number(obj.length().to_double())
         _ => Number(0.0)
       }
     "first" =>
@@ -1924,7 +1941,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         Array(arr) => if arr.length() > 0 { arr[0] } else { Null }
         String(s) =>
           if s.length() > 0 {
-            String(s.substring(start=0, end=1))
+            String(slice_string(s, 0, 1))
           } else {
             Null
           }
@@ -1940,7 +1957,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           }
         String(s) =>
           if s.length() > 0 {
-            String(s.substring(start=s.length() - 1))
+            String(slice_string_from(s, s.length() - 1))
           } else {
             Null
           }
@@ -1962,7 +1979,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           let mut reversed = ""
           let mut i = chars.length() - 1
           while i >= 0 {
-            reversed = reversed + chars.substring(start=i, end=i + 1)
+            reversed = reversed + slice_string(chars, i, i + 1)
             i = i - 1
           }
           String(reversed)
@@ -2028,7 +2045,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         String(s) => {
           let max_length = 50 // Default truncate length
           if s.length() > max_length {
-            String(s.substring(start=0, end=max_length) + "...")
+            String(slice_string(s, 0, max_length) + "...")
           } else {
             value
           }
@@ -2341,7 +2358,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           if date_str.contains("2023") ||
             date_str.contains("2024") ||
             date_str.contains("2025") {
-            String("January 01, " + date_str.substring(start=0, end=4))
+            String("January 01, " + slice_string(date_str, 0, 4))
           } else {
             String(date_str + " (formatted)")
           }
@@ -2372,9 +2389,13 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       match value {
         String(s) =>
           if s.length() > 0 {
-            let first_char = s.substring(start=0, end=1).to_upper()
-            let rest = if s.length() > 1 {
-              s.substring(start=1).to_lower()
+            let first_char_end = match s.offset_of_nth_char(1) {
+              Some(offset) => offset
+              None => s.length()
+            }
+            let first_char = slice_string(s, 0, first_char_end).to_upper()
+            let rest = if first_char_end < s.length() {
+              slice_string_from(s, first_char_end).to_lower()
             } else {
               ""
             }
@@ -2488,7 +2509,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
     "relative_url" =>
       match value {
         String(s) =>
-          if s.substring(start=0, end=1) == "/" {
+          if slice_string(s, 0, 1) == "/" {
             value
           } else {
             String("/" + s)
@@ -2524,7 +2545,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         String(s) =>
           // Slice string - take first 3 characters
           if s.length() > 3 {
-            String(s.substring(start=0, end=3))
+            String(slice_string(s, 0, 3))
           } else {
             value
           }
@@ -2600,7 +2621,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         Number(n) => {
           let str_val = n.to_string()
           if str_val.strip_suffix(".0") != None {
-            String("$" + str_val.substring(start=0, end=str_val.length() - 2))
+            String("$" + slice_string(str_val, 0, str_val.length() - 2))
           } else {
             String("$" + str_val)
           }
