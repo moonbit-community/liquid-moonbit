@@ -2384,9 +2384,13 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       match value {
         String(s) =>
           if s.length() > 0 {
-            let first_char = s[0:1].to_owned().to_upper()
-            let rest = if s.length() > 1 {
-              s[1:].to_owned().to_lower()
+            let first_char_end = match s.offset_of_nth_char(1) {
+              Some(offset) => offset
+              None => s.length()
+            }
+            let first_char = s[0:first_char_end].to_owned().to_upper()
+            let rest = if first_char_end < s.length() {
+              s[first_char_end:].to_owned().to_lower()
             } else {
               ""
             }
