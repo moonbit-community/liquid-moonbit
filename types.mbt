@@ -124,7 +124,7 @@ pub fn template_with_layout(
 pub fn simple_template_with_layout(
   nodes : Array[LiquidNode],
 ) -> TemplateWithLayout {
-  { nodes, layout: None, blocks: Map::new() }
+  { nodes, layout: None, blocks: Map([]) }
 }
 
 // Simple template parser

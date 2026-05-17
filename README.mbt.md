@@ -68,7 +68,7 @@ Last login: {{ user.last_login | date: "%B %d, %Y" }}
 test "variable substitution example" {
   // MoonBit code
   let context = LiquidContext::new()
-  let user_obj = Map::new()
+  let user_obj = Map([])
   user_obj.set("name", string_value("Alice"))
   user_obj.set("role", string_value("admin"))
   user_obj.set("last_login", string_value("2023-12-01"))
@@ -176,7 +176,7 @@ test "api reference types example" {
   let num_val = number_value(42.0)
   let bool_val = bool_value(true)
   let arr_val = array_value([str_val, num_val])
-  let obj_map = Map::new()
+  let obj_map = Map([])
   obj_map.set("key", str_val)
   let obj_val = object_value(obj_map)
   let null_val = null_value()

@@ -20,7 +20,7 @@ test "liquid array and object values" {
   assert_eq(arr.to_string(), "[apple, banana]")
 
   // Test object values
-  let obj_map = Map::new()
+  let obj_map = Map([])
   obj_map.set("name", string_value("John"))
   obj_map.set("age", number_value(30.0))
   let obj = object_value(obj_map)
@@ -150,7 +150,7 @@ test "filter size" {
   assert_eq(arr_result.to_string(), "3")
 
   // Test size filter on object
-  let obj_map = Map::new()
+  let obj_map = Map([])
   obj_map.set("key1", string_value("value1"))
   obj_map.set("key2", string_value("value2"))
   let obj_value = object_value(obj_map)
@@ -239,7 +239,7 @@ test "condition evaluation truthy values" {
   assert_eq(result4, true)
 
   // Non-empty object
-  let obj_map = Map::new()
+  let obj_map = Map([])
   obj_map.set("key", string_value("value"))
   context.set("non_empty_object", object_value(obj_map))
   let result5 = evaluate_condition("non_empty_object", context)
@@ -411,7 +411,7 @@ test "integration basic template" {
   let context = LiquidContext::new()
   context.set("name", string_value("World"))
   context.set("site_name", string_value("Liquid MoonBit"))
-  let user_obj = Map::new()
+  let user_obj = Map([])
   user_obj.set("role", string_value("Developer"))
   context.set("user", object_value(user_obj))
   let result = template.render(context)
@@ -459,9 +459,9 @@ test "integration blog post metadata" {
     ],
   })
   let context = LiquidContext::new()
-  let author_obj = Map::new()
+  let author_obj = Map([])
   author_obj.set("name", string_value("Jane Doe"))
-  let post_obj = Map::new()
+  let post_obj = Map([])
   post_obj.set("title", string_value("My First Post"))
   post_obj.set("author", object_value(author_obj))
   let tags = array_value([string_value("tech"), string_value("moonbit")])
@@ -1367,7 +1367,7 @@ test "logical operators with string contains" {
 test "object property access" {
   // Test object property access like forloop.index
   let context = LiquidContext::new()
-  let forloop_obj = Map::new()
+  let forloop_obj = Map([])
   forloop_obj.set("index", number_value(1.0))
   forloop_obj.set("first", bool_value(true))
   forloop_obj.set("last", bool_value(false))
@@ -1462,7 +1462,7 @@ test "forloop with empty array" {
 test "nested object access" {
   // Test nested object property access
   let context = LiquidContext::new()
-  let user_obj = Map::new()
+  let user_obj = Map([])
   user_obj.set("name", string_value("Alice"))
   user_obj.set("role", string_value("admin"))
   context.set("user", object_value(user_obj))
@@ -3365,13 +3365,13 @@ test "where filter with property and value" {
   let context = LiquidContext::new()
 
   // Create products with featured property
-  let product1 = Map::new()
+  let product1 = Map([])
   product1.set("name", string_value("Product 1"))
   product1.set("featured", string_value("true"))
-  let product2 = Map::new()
+  let product2 = Map([])
   product2.set("name", string_value("Product 2"))
   product2.set("featured", string_value("false"))
-  let product3 = Map::new()
+  let product3 = Map([])
   product3.set("name", string_value("Product 3"))
   product3.set("featured", string_value("true"))
   let products = array_value([
@@ -3408,10 +3408,10 @@ test "where filter with no matches" {
   // Test where filter with no matching items
   let template = parse("{{ products | where: 'sale', 'true' }}")
   let context = LiquidContext::new()
-  let product1 = Map::new()
+  let product1 = Map([])
   product1.set("name", string_value("Product 1"))
   product1.set("sale", string_value("false"))
-  let product2 = Map::new()
+  let product2 = Map([])
   product2.set("name", string_value("Product 2"))
   product2.set("sale", string_value("false"))
   let products = array_value([object_value(product1), object_value(product2)])
@@ -3425,13 +3425,13 @@ test "where filter with mixed object properties" {
   // Test where filter with different property types
   let template = parse("{{ items | where: 'active', 'yes' }}")
   let context = LiquidContext::new()
-  let item1 = Map::new()
+  let item1 = Map([])
   item1.set("name", string_value("Item 1"))
   item1.set("active", string_value("yes"))
-  let item2 = Map::new()
+  let item2 = Map([])
   item2.set("name", string_value("Item 2"))
   item2.set("active", string_value("no"))
-  let item3 = Map::new()
+  let item3 = Map([])
   item3.set("name", string_value("Item 3"))
   item3.set("active", string_value("yes"))
   let items = array_value([
@@ -3454,13 +3454,13 @@ test "where filter chaining" {
     "{{ products | where: 'category', 'electronics' | limit: 2 | join }}",
   )
   let context = LiquidContext::new()
-  let product1 = Map::new()
+  let product1 = Map([])
   product1.set("name", string_value("Phone"))
   product1.set("category", string_value("electronics"))
-  let product2 = Map::new()
+  let product2 = Map([])
   product2.set("name", string_value("Book"))
   product2.set("category", string_value("books"))
-  let product3 = Map::new()
+  let product3 = Map([])
   product3.set("name", string_value("Laptop"))
   product3.set("category", string_value("electronics"))
   let products = array_value([
@@ -3661,7 +3661,7 @@ test "array filter edge cases" {
   let mixed_arr = array_value([
     string_value(""), // Empty string
     array_value([]), // Empty array
-    object_value(Map::new()), // Empty object
+    object_value(Map([])), // Empty object
     null_value(), // Null
     number_value(42.0), // Number
   ])
@@ -3770,7 +3770,7 @@ test "where filter edge cases" {
 
   // Test where with object without matching property
   let context2 = LiquidContext::new()
-  let obj_without_prop = Map::new()
+  let obj_without_prop = Map([])
   obj_without_prop.set("name", string_value("test"))
   // No 'category' property
   let items2 = array_value([object_value(obj_without_prop)])
@@ -4425,7 +4425,7 @@ test "where filter edge cases v2" {
   }
 
   // Test where filter with object having no matching property
-  let obj_map = Map::new()
+  let obj_map = Map([])
   obj_map.set("other_prop", string_value("other_value"))
   let obj_arr = array_value([object_value(obj_map)])
   let result_no_match = apply_filter_with_params(obj_arr, filter_where)
@@ -4741,13 +4741,13 @@ test "sort_by filter basic" {
 ///|
 test "sort_by filter with property parameter" {
   // Test sort_by filter with object property
-  let obj1 = Map::new()
+  let obj1 = Map([])
   obj1.set("name", string_value("Charlie"))
   obj1.set("age", number_value(30.0))
-  let obj2 = Map::new()
+  let obj2 = Map([])
   obj2.set("name", string_value("Alice"))
   obj2.set("age", number_value(25.0))
-  let obj3 = Map::new()
+  let obj3 = Map([])
   obj3.set("name", string_value("Bob"))
   obj3.set("age", number_value(35.0))
   let arr = array_value([
@@ -4932,9 +4932,9 @@ test "pluralize filter parameter edge cases" {
 ///|
 test "sort_by filter edge cases" {
   // Test sort_by with single quotes parameter
-  let obj1 = Map::new()
+  let obj1 = Map([])
   obj1.set("name", string_value("Bob"))
-  let obj2 = Map::new()
+  let obj2 = Map([])
   obj2.set("name", string_value("Alice"))
   let arr = array_value([object_value(obj1), object_value(obj2)])
   let filter_quotes = filter("sort_by", ["'name'"])
@@ -4953,7 +4953,7 @@ test "sort_by filter edge cases" {
   }
 
   // Test sort_by with objects that don't have the property
-  let obj_no_prop = Map::new()
+  let obj_no_prop = Map([])
   obj_no_prop.set("other", string_value("value"))
   let arr_no_prop = array_value([object_value(obj_no_prop)])
   let result_no_prop = apply_filter_with_params(arr_no_prop, filter_quotes)
@@ -5117,13 +5117,13 @@ test "at filter functionality" {
 ///|
 test "enhanced map filter functionality" {
   // Test map filter with property parameter
-  let obj1 = Map::new()
+  let obj1 = Map([])
   obj1.set("name", string_value("Alice"))
   obj1.set("age", number_value(25.0))
-  let obj2 = Map::new()
+  let obj2 = Map([])
   obj2.set("name", string_value("Bob"))
   obj2.set("age", number_value(30.0))
-  let obj3 = Map::new()
+  let obj3 = Map([])
   obj3.set("name", string_value("Charlie"))
   obj3.set("age", number_value(35.0))
   let arr = array_value([
@@ -5370,7 +5370,7 @@ test "at filter additional edge cases" {
 ///|
 test "map filter with mixed array types" {
   // Test map filter with array containing non-objects
-  let obj = Map::new()
+  let obj = Map([])
   obj.set("name", string_value("Alice"))
   let mixed_arr = array_value([
     object_value(obj),
@@ -5405,7 +5405,7 @@ test "layout system basic functionality" {
 test "template with layout struct creation" {
   // Test TemplateWithLayout struct constructor functions
   let nodes = [text_node("Hello"), variable_node("name", []), text_node("!")]
-  let blocks = Map::new()
+  let blocks = Map([])
   blocks.set("header", [text_node("Header Content")])
   blocks.set("footer", [text_node("Footer Content")])
 
@@ -5452,7 +5452,7 @@ test "template with layout complex scenarios" {
     text_node("."),
   ]
 
-  let blocks = Map::new()
+  let blocks = Map([])
   blocks.set("sidebar", [
     text_node("Sidebar: "),
     variable_node("sidebar_content", []),
@@ -5500,7 +5500,7 @@ test "template with layout edge cases" {
   assert_eq(empty_template.blocks.length(), 0)
 
   // Template with empty blocks map
-  let empty_blocks = Map::new()
+  let empty_blocks = Map([])
   let template_empty_blocks = template_with_layout(
     [text_node("content")],
     Some("layout"),
@@ -5509,7 +5509,7 @@ test "template with layout edge cases" {
   assert_eq(template_empty_blocks.blocks.length(), 0)
 
   // Template with multiple identical block names (should overwrite)
-  let blocks = Map::new()
+  let blocks = Map([])
   blocks.set("content", [text_node("First")])
   blocks.set("content", [text_node("Second")]) // Overwrites first
 
@@ -5536,7 +5536,7 @@ test "template with layout integration" {
     text_node("!"),
   ]
 
-  let blocks = Map::new()
+  let blocks = Map([])
   blocks.set("title", [variable_node("page.title", [filter("upcase", [])])])
   blocks.set("meta", [
     text_node("<meta name='description' content='"),
@@ -5852,9 +5852,9 @@ test "sort_by filter with missing property" {
   // Test uncovered case where object doesn't have the specified property
   let template = parse("{{ items | sort_by: 'missing_prop' }}")
   let context = LiquidContext::new()
-  let obj1 = Map::new()
+  let obj1 = Map([])
   obj1.set("name", string_value("Alice"))
-  let obj2 = Map::new()
+  let obj2 = Map([])
   obj2.set("name", string_value("Bob"))
   let items = array_value([object_value(obj1), object_value(obj2)])
   context.set("items", items)
@@ -6027,7 +6027,7 @@ test "direct filter application uncovered cases" {
   assert_eq(non_number_result.to_string(), "text")
 
   // Test sort_by with missing property
-  let obj_map = Map::new()
+  let obj_map = Map([])
   obj_map.set("other_prop", string_value("value"))
   let obj_with_missing = object_value(obj_map)
   let sort_by_filter = filter("sort_by", ["missing"])
@@ -6164,9 +6164,9 @@ test "filter parameter quote handling comprehensive" {
   // Test sort_by with single quotes
   let template3 = parse("{{ items | sort_by: 'name' }}")
   let context3 = LiquidContext::new()
-  let obj1 = Map::new()
+  let obj1 = Map([])
   obj1.set("name", string_value("zebra"))
-  let obj2 = Map::new()
+  let obj2 = Map([])
   obj2.set("name", string_value("apple"))
   context3.set("items", array_value([object_value(obj1), object_value(obj2)]))
   let result3 = template3.render(context3)
@@ -6193,9 +6193,9 @@ test "filter parameter edge cases without quotes" {
 
   // Test sort_by with unquoted parameter
   let sort_filter = filter("sort_by", ["name"])
-  let obj1 = Map::new()
+  let obj1 = Map([])
   obj1.set("name", string_value("zebra"))
-  let obj2 = Map::new()
+  let obj2 = Map([])
   obj2.set("name", string_value("apple"))
   let items = array_value([object_value(obj1), object_value(obj2)])
   let sort_result = apply_filter_with_params(items, sort_filter)
@@ -6272,11 +6272,11 @@ test "array index edge cases for at filter" {
 test "map filter with missing properties" {
   // Test map filter when objects don't have the specified property
 
-  let obj1 = Map::new()
+  let obj1 = Map([])
   obj1.set("name", string_value("Alice"))
   // obj1 doesn't have "age" property
 
-  let obj2 = Map::new()
+  let obj2 = Map([])
   obj2.set("age", number_value(30.0))
   // obj2 doesn't have "name" property
 
@@ -6446,23 +6446,23 @@ test "complex filter parameter combinations v2" {
   }
 
   // Test sort_by with complex object structures
-  let complex_obj1 = Map::new()
+  let complex_obj1 = Map([])
   complex_obj1.set(
     "nested",
     object_value(
       {
-        let nested_map = Map::new()
+        let nested_map = Map([])
         nested_map.set("value", string_value("zebra"))
         nested_map
       },
     ),
   )
-  let complex_obj2 = Map::new()
+  let complex_obj2 = Map([])
   complex_obj2.set(
     "nested",
     object_value(
       {
-        let nested_map = Map::new()
+        let nested_map = Map([])
         nested_map.set("value", string_value("apple"))
         nested_map
       },
