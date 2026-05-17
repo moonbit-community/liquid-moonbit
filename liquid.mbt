@@ -27,12 +27,12 @@ pub fn LiquidValue::to_string(self : LiquidValue) -> String {
 
 ///|
 pub fn LiquidContext::new() -> LiquidContext {
-  { variables: Map::new(), error_policy: Warn }
+  { variables: Map([]), error_policy: Warn }
 }
 
 ///|
 pub fn LiquidContext::with_error_policy(policy : ErrorPolicy) -> LiquidContext {
-  { variables: Map::new(), error_policy: policy }
+  { variables: Map([]), error_policy: policy }
 }
 
 // Helper functions to create error policies
@@ -756,7 +756,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             loop_context.set(loop_var, item)
 
             // Set enhanced forloop object properties (based on processed items)
-            let forloop_obj = Map::new()
+            let forloop_obj = Map([])
             forloop_obj.set("index", number_value((index + 1).to_double()))
             forloop_obj.set("index0", number_value(index.to_double()))
             forloop_obj.set("first", bool_value(index == 0))
@@ -904,7 +904,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             loop_context.set(loop_var, item)
 
             // Set enhanced tablerowloop object properties
-            let tablerowloop_obj = Map::new()
+            let tablerowloop_obj = Map([])
             tablerowloop_obj.set("index", number_value((index + 1).to_double()))
             tablerowloop_obj.set("index0", number_value(index.to_double()))
             tablerowloop_obj.set(
