@@ -2,6 +2,4 @@ import {
   "bobzhang/liquid",
 }
 
-options(
-  "is-main": true,
-)
+pkgtype(kind: "executable")
