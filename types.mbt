@@ -10,6 +10,9 @@ pub enum LiquidValue {
   Null
 } derive(ToJson)
 
+///|
+pub extend LiquidValue with ToJson::{to_json}
+
 /// Error handling policies
 
 ///|
@@ -19,6 +22,9 @@ pub enum ErrorPolicy {
   Silent // Ignore errors silently
 } derive(ToJson)
 
+///|
+pub extend ErrorPolicy with ToJson::{to_json}
+
 // Context for variable storage
 
 ///|
@@ -26,6 +32,9 @@ pub struct LiquidContext {
   variables : Map[String, LiquidValue]
   error_policy : ErrorPolicy
 } derive(ToJson)
+
+///|
+pub extend LiquidContext with ToJson::{to_json}
 
 // Filter with optional parameters
 
@@ -35,6 +44,9 @@ pub struct Filter {
   parameters : Array[String]
 } derive(ToJson)
 
+///|
+pub extend Filter with ToJson::{to_json}
+
 // For loop modifiers
 
 ///|
@@ -43,6 +55,9 @@ pub struct ForLoopModifiers {
   offset : Int?
   reversed : Bool
 } derive(ToJson)
+
+///|
+pub extend ForLoopModifiers with ToJson::{to_json}
 
 // Template structure
 
@@ -81,6 +96,9 @@ pub enum LiquidNode {
   Content // placeholder for main content in layouts
 } derive(ToJson)
 
+///|
+pub extend LiquidNode with ToJson::{to_json}
+
 // Whitespace control flags
 
 ///|
@@ -90,16 +108,19 @@ pub struct WhitespaceControl {
 } derive(ToJson)
 
 ///|
+pub extend WhitespaceControl with ToJson::{to_json}
+
+///|
 pub fn whitespace_control(
   strip_left : Bool,
   strip_right : Bool,
 ) -> WhitespaceControl {
-  { strip_left, strip_right }
+  { strip_left, strip_right, }
 }
 
 ///|
 pub fn no_whitespace_control() -> WhitespaceControl {
-  { strip_left: false, strip_right: false }
+  { strip_left: false, strip_right: false, }
 }
 
 // Template with layout information
@@ -112,19 +133,22 @@ pub struct TemplateWithLayout {
 } derive(ToJson)
 
 ///|
+pub extend TemplateWithLayout with ToJson::{to_json}
+
+///|
 pub fn template_with_layout(
   nodes : Array[LiquidNode],
   layout : String?,
   blocks : Map[String, Array[LiquidNode]],
 ) -> TemplateWithLayout {
-  { nodes, layout, blocks }
+  { nodes, layout, blocks, }
 }
 
 ///|
 pub fn simple_template_with_layout(
   nodes : Array[LiquidNode],
 ) -> TemplateWithLayout {
-  { nodes, layout: None, blocks: Map([]) }
+  { nodes, layout: None, blocks: Map([]), }
 }
 
 // Simple template parser
@@ -133,3 +157,6 @@ pub fn simple_template_with_layout(
 pub struct LiquidTemplate {
   nodes : Array[LiquidNode]
 } derive(ToJson)
+
+///|
+pub extend LiquidTemplate with ToJson::{to_json}
