@@ -27,12 +27,12 @@ pub fn LiquidValue::to_string(self : LiquidValue) -> String {
 
 ///|
 pub fn LiquidContext::new() -> LiquidContext {
-  { variables: Map([]), error_policy: Warn }
+  { variables: Map([]), error_policy: Warn, }
 }
 
 ///|
 pub fn LiquidContext::with_error_policy(policy : ErrorPolicy) -> LiquidContext {
-  { variables: Map([]), error_policy: policy }
+  { variables: Map([]), error_policy: policy, }
 }
 
 // Helper functions to create error policies
@@ -121,18 +121,18 @@ pub fn LiquidContext::get(self : LiquidContext, key : String) -> LiquidValue? {
 
 ///|
 pub fn filter(name : String, parameters : Array[String]) -> Filter {
-  { name, parameters }
+  { name, parameters, }
 }
 
 ///|
 pub fn LiquidTemplate::new() -> LiquidTemplate {
-  { nodes: [] }
+  { nodes: [], }
 }
 
 ///|
 pub fn parse(template : String) -> LiquidTemplate {
   let parsed_nodes = parse_template(template)
-  { nodes: parsed_nodes }
+  { nodes: parsed_nodes, }
 }
 
 ///|
@@ -672,7 +672,7 @@ fn parse_for_loop_modifiers(
     }
     i = i + 1
   }
-  (collection, { limit, offset, reversed })
+  (collection, { limit, offset, reversed, })
 }
 
 // Template renderer
@@ -2737,7 +2737,11 @@ pub fn for_node(
   collection : String,
   body : Array[LiquidNode],
 ) -> LiquidNode {
-  For(loop_var, collection, body, { limit: None, offset: None, reversed: false })
+  For(loop_var, collection, body, {
+    limit: None,
+    offset: None,
+    reversed: false,
+  })
 }
 
 ///|
@@ -2756,7 +2760,7 @@ pub fn for_loop_modifiers(
   offset : Int?,
   reversed : Bool,
 ) -> ForLoopModifiers {
-  { limit, offset, reversed }
+  { limit, offset, reversed, }
 }
 
 ///|
