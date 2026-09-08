@@ -1723,7 +1723,7 @@ test "whitespace control edge cases" {
   assert_eq(ws_control.strip_right, true)
 
   // Test multiple instances
-  let controls = Array()
+  let controls = []
   for i in 0..<5 {
     controls.push(whitespace_control(i % 2 == 0, i % 3 == 0))
   }
