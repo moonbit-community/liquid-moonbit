@@ -2411,7 +2411,7 @@ test "loop control flow recognition" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result.contains("astop"), true) // Should contain loop content
+  assert_eq(result, "astop")
 }
 
 // Liquid Tag Tests
@@ -2529,64 +2529,66 @@ test "section and style in template" {
 
 ///|
 test "include tag parsing" {
-  // Test include tag parsing
-  let template = parse("{% include 'header.liquid' %}")
   let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("Include: 'header.liquid'"), true)
+  context.register_template("header.liquid", "<header>Custom</header>")
+  assert_eq(
+    parse("{% include 'header.liquid' %}").render(context),
+    "<header>Custom</header>",
+  )
 }
 
 ///|
 test "render tag parsing" {
-  // Test render tag parsing
-  let template = parse("{% render 'product-card' %}")
   let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("Render: 'product-card'"), true)
+  context.register_template("product-card", "<article>Product</article>")
+  assert_eq(
+    parse("{% render 'product-card' %}").render(context),
+    "<article>Product</article>",
+  )
 }
 
 ///|
 test "include node helper" {
-  // Test include node helper function
   let context = LiquidContext::new()
-  let include_test = include_node("sidebar.liquid")
-  let result = render_node(include_test, context)
-  assert_eq(result, "<!-- Include: sidebar.liquid (not found) -->")
+  context.register_template("sidebar.liquid", "Sidebar")
+  assert_eq(render_node(include_node("sidebar.liquid"), context), "Sidebar")
 }
 
 ///|
 test "render node helper" {
-  // Test render node helper function
   let context = LiquidContext::new()
-  let render_test = render_node_tag("component.liquid")
-  let result = render_node(render_test, context)
-  assert_eq(result, "<!-- Render: component.liquid (not found) -->")
+  context.register_template("component.liquid", "Component")
+  assert_eq(
+    render_node(render_node_tag("component.liquid"), context),
+    "Component",
+  )
 }
 
 ///|
 test "template inclusion in context" {
-  // Test template inclusion in larger context
-  let template = parse(
-    "Header: {% include 'header' %} | Footer: {% render 'footer' %}",
-  )
   let context = LiquidContext::new()
-  let result = template.render(context)
+  context.register_template("header", "H")
+  context.register_template("footer", "F")
   assert_eq(
-    result, "Header: <!-- Include: 'header' (not found) --> | Footer: <!-- Render: 'footer' (not found) -->",
+    parse("Header: {% include 'header' %} | Footer: {% render 'footer' %}").render(
+      context,
+    ),
+    "Header: H | Footer: F",
   )
 }
 
 ///|
 test "multiple includes" {
-  // Test multiple include statements
-  let template = parse(
-    "{% include 'nav' %}{% include 'content' %}{% include 'footer' %}",
-  )
   let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("Include: 'nav'"), true)
-  assert_eq(result.contains("Include: 'content'"), true)
-  assert_eq(result.contains("Include: 'footer'"), true)
+  context.register_template("nav", "N")
+  context.register_template("content", "C")
+  context.register_template("footer", "F")
+  assert_eq(
+    parse("{% include 'nav' %}{% include 'content' %}{% include 'footer' %}").render(
+      context,
+    ),
+    "NCF",
+  )
 }
 
 // Enhanced Filter Parameters Tests
@@ -2829,62 +2831,66 @@ test "complex condition evaluation in control flow" {
 
 ///|
 test "include tag with realistic content" {
-  // Test include tag with realistic template content
-  let template = parse("{% include 'header' %}")
   let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("header"), true) // Template name should be in output
+  context.set("title", string_value("Site"))
+  context.register_template("header", "<header>{{ title }}</header>")
+  assert_eq(
+    parse("{% include 'header' %}").render(context),
+    "<header>Site</header>",
+  )
 }
 
 ///|
 test "render tag with component content" {
-  // Test render tag with component content
-  let template = parse("{% render 'product-card' %}")
   let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("product-card"), true) // Template name should be in output
+  context.register_template("product-card", "<article>{{ title }}</article>")
+  assert_eq(
+    parse("{% render 'product-card', title: 'Product' %}").render(context),
+    "<article>Product</article>",
+  )
 }
 
 ///|
 test "include multiple known templates" {
-  // Test including multiple known templates
-  let template = parse("{% include 'nav' %}{% include 'sidebar' %}")
   let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("nav"), true)
-  assert_eq(result.contains("sidebar"), true)
+  context.register_template("nav", "<nav>Links</nav>")
+  context.register_template("sidebar", "<aside>Sidebar</aside>")
+  assert_eq(
+    parse("{% include 'nav' %}{% include 'sidebar' %}").render(context),
+    "<nav>Links</nav><aside>Sidebar</aside>",
+  )
 }
 
 ///|
 test "include unknown template" {
-  // Test including unknown template
-  let template = parse("{% include 'unknown-template' %}")
-  let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("not found"), true)
+  let context = LiquidContext::with_error_policy(strict_policy())
+  assert_eq(
+    parse("{% include 'unknown-template' %}").render(context),
+    "[ERROR: Template 'unknown-template' not found]",
+  )
 }
 
 ///|
 test "render with isolated context" {
-  // Test render tag with isolated context simulation
-  let template = parse("{% render 'component' %}")
   let context = LiquidContext::new()
-  context.set("global_var", string_value("should not affect render"))
-  let result = template.render(context)
-  assert_eq(result.contains("component"), true) // Template name should be in output
+  context.set("global_var", string_value("private"))
+  context.register_template(
+    "component", "{{ global_var | default: 'isolated' }}",
+  )
+  assert_eq(parse("{% render 'component' %}").render(context), "isolated")
 }
 
 ///|
 test "template composition example" {
-  // Test realistic template composition
-  let template = parse(
-    "{% include 'header' %}\n<main>Content</main>\n{% include 'footer' %}",
-  )
   let context = LiquidContext::new()
-  let result = template.render(context)
-  assert_eq(result.contains("header"), true)
-  assert_eq(result.contains("<main>Content</main>"), true)
-  assert_eq(result.contains("footer"), true)
+  context.register_template("header", "<header>Title</header>")
+  context.register_template("footer", "<footer>End</footer>")
+  assert_eq(
+    parse("{% include 'header' %}<main>Content</main>{% include 'footer' %}").render(
+      context,
+    ),
+    "<header>Title</header><main>Content</main><footer>End</footer>",
+  )
 }
 
 // Enhanced Filter Parameters Implementation Tests

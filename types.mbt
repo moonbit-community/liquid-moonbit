@@ -31,6 +31,7 @@ pub extend ErrorPolicy with ToJson::{to_json}
 pub struct LiquidContext {
   variables : Map[String, LiquidValue]
   error_policy : ErrorPolicy
+  templates : Map[String, String]
 } derive(ToJson)
 
 ///|

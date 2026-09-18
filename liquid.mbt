@@ -27,12 +27,12 @@ pub fn LiquidValue::to_string(self : LiquidValue) -> String {
 
 ///|
 pub fn LiquidContext::new() -> LiquidContext {
-  { variables: Map([]), error_policy: Warn, }
+  { variables: Map([]), error_policy: Warn, templates: Map([]), }
 }
 
 ///|
 pub fn LiquidContext::with_error_policy(policy : ErrorPolicy) -> LiquidContext {
-  { variables: Map([]), error_policy: policy, }
+  { variables: Map([]), error_policy: policy, templates: Map([]), }
 }
 
 // Helper functions to create error policies
@@ -190,15 +190,28 @@ pub fn LiquidTemplate::render(
   self : LiquidTemplate,
   context : LiquidContext,
 ) -> String {
+  let state = new_render_state()
   let mut result = ""
   for node in self.nodes {
-    result = result + render_node(node, context)
+    result = result + render_node_inner(node, context, state)
   }
   result
 }
 
 ///|
 pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
+  render_node_inner(node, context, new_render_state())
+}
+
+///|
+fn render_node_inner(
+  node : LiquidNode,
+  context : LiquidContext,
+  state : RenderState,
+) -> String {
+  if state.flow != Next {
+    return ""
+  }
   match node {
     Text(text) => text
     Variable(var_name, filters) =>
@@ -250,6 +263,9 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
           }
           let mut output = ""
           let mut index = 0
+          let saved_item = context.variables.get(loop_var)
+          let saved_loop = context.variables.get("forloop")
+          state.loops += 1
           for item in processed_items {
             let loop_context = context
             loop_context.set(loop_var, item)
@@ -277,7 +293,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             )
 
             // Enhanced forloop properties
-            forloop_obj.set("parentloop", null_value()) // Parent loop (for nested loops)
+            forloop_obj.set("parentloop", saved_loop.unwrap_or(Null)) // Parent loop (for nested loops)
             forloop_obj.set("name", string_value(collection)) // Collection name
 
             // Add cycle functionality to forloop
@@ -285,10 +301,19 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             forloop_obj.set("cycle", string_value(cycle_odd_even))
             loop_context.set("forloop", object_value(forloop_obj))
             for body_node in body {
-              output = output + render_node(body_node, loop_context)
+              output = output +
+                render_node_inner(body_node, loop_context, state)
+            }
+            let flow = state.flow
+            state.flow = Next
+            if flow == Break {
+              break
             }
             index = index + 1
           }
+          state.loops -= 1
+          restore_variable(context, loop_var, saved_item)
+          restore_variable(context, "forloop", saved_loop)
           output
         }
         _ => ""
@@ -320,7 +345,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
       }
       let mut output = ""
       for body_node in body_to_render {
-        output = output + render_node(body_node, context)
+        output = output + render_node_inner(body_node, context, state)
       }
       output
     }
@@ -331,7 +356,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
       } else {
         let mut output = ""
         for body_node in body {
-          output = output + render_node(body_node, context)
+          output = output + render_node_inner(body_node, context, state)
         }
         output
       }
@@ -348,7 +373,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
         if expr_value == when_value {
           let mut output = ""
           for body_node in when_body {
-            output = output + render_node(body_node, context)
+            output = output + render_node_inner(body_node, context, state)
           }
           return output
         }
@@ -359,7 +384,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
         Some(else_nodes) => {
           let mut output = ""
           for body_node in else_nodes {
-            output = output + render_node(body_node, context)
+            output = output + render_node_inner(body_node, context, state)
           }
           output
         }
@@ -385,6 +410,12 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
     TableRow(loop_var, collection, body, cols) =>
       match context.get(collection) {
         Some(Array(items)) => {
+          if cols <= 0 {
+            return handle_error(context, "Table row columns must be positive")
+          }
+          let saved_item = context.variables.get(loop_var)
+          let saved_loop = context.variables.get("tablerowloop")
+          state.loops += 1
           let mut output = "<table>\n"
           let mut index = 0
           let mut row_open = false
@@ -441,12 +472,21 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
             loop_context.set("tablerowloop", object_value(tablerowloop_obj))
             output = output + "<td>"
             for body_node in body {
-              output = output + render_node(body_node, loop_context)
+              output = output +
+                render_node_inner(body_node, loop_context, state)
             }
             output = output + "</td>\n"
+            let flow = state.flow
+            state.flow = Next
+            if flow == Break {
+              break
+            }
             index = index + 1
           }
 
+          state.loops -= 1
+          restore_variable(context, loop_var, saved_item)
+          restore_variable(context, "tablerowloop", saved_loop)
           // Close final row and table
           if row_open {
             output = output + "</tr>\n"
@@ -456,19 +496,23 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
         }
         _ => ""
       }
-    Break =>
-      // Break statement - for now just return empty string
-      // In a full implementation, this would signal loop termination
+    Break => {
+      if state.loops > 0 {
+        state.flow = Break
+      }
       ""
-    Continue =>
-      // Continue statement - for now just return empty string  
-      // In a full implementation, this would signal skip to next iteration
+    }
+    Continue => {
+      if state.loops > 0 {
+        state.flow = Continue
+      }
       ""
+    }
     Liquid(body) => {
       // Liquid block - render the contained nodes
       let mut output = ""
       for body_node in body {
-        output = output + render_node(body_node, context)
+        output = output + render_node_inner(body_node, context, state)
       }
       output
     }
@@ -482,42 +526,15 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
     Style(css_content) =>
       // Style tag - render CSS content
       "<style>" + css_content + "</style>"
-    Include(template_name) => {
-      // Include tag - attempt to load template from examples directory
-      let clean_name = template_name
-        .replace(old="'", new="")
-        .replace(old="\"", new="")
-      let _template_path = "examples/" + clean_name + ".liquid"
-
-      // For now, return a realistic include simulation
-      match clean_name {
-        "header" => "<!-- Header Content -->\n<header>Site Header</header>"
-        "footer" => "<!-- Footer Content -->\n<footer>Site Footer</footer>"
-        "nav" => "<!-- Navigation -->\n<nav>Navigation Menu</nav>"
-        "sidebar" => "<!-- Sidebar -->\n<aside>Sidebar Content</aside>"
-        _ => "<!-- Include: " + template_name + " (not found) -->"
-      }
-    }
-    Render(template_name) => {
-      // Render tag - isolated template rendering
-      let clean_name = template_name
-        .replace(old="'", new="")
-        .replace(old="\"", new="")
-
-      // Render with isolated context (basic simulation)
-      match clean_name {
-        "product-card" =>
-          "<div class=\"product-card\">Product Card Component</div>"
-        "component" => "<div class=\"component\">Reusable Component</div>"
-        "footer" => "<footer class=\"isolated\">Footer Component</footer>"
-        _ => "<!-- Render: " + template_name + " (not found) -->"
-      }
-    }
+    Include(template_name) =>
+      render_partial(template_name, context, state, false)
+    Render(template_name) => render_partial(template_name, context, state, true)
     Capture(var_name, content) => {
       // Capture tag - render content and store in variable
       let mut captured_output = ""
       for content_node in content {
-        captured_output = captured_output + render_node(content_node, context)
+        captured_output = captured_output +
+          render_node_inner(content_node, context, state)
       }
 
       // Store captured content in context
@@ -557,7 +574,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
       // In a full implementation, this would track previous values
       let mut output = ""
       for body_node in body {
-        output = output + render_node(body_node, context)
+        output = output + render_node_inner(body_node, context, state)
       }
       output
     }
@@ -576,7 +593,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
           // Render default content
           let mut output = ""
           for content_node in default_content {
-            output = output + render_node(content_node, context)
+            output = output + render_node_inner(content_node, context, state)
           }
           output
         }

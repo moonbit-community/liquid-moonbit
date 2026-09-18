@@ -126,9 +126,11 @@ pub fn ForLoopModifiers::to_json(Self) -> Json
 pub struct LiquidContext {
   variables : Map[String, LiquidValue]
   error_policy : ErrorPolicy
+  templates : Map[String, String]
 } derive(ToJson)
 pub fn LiquidContext::get(Self, String) -> LiquidValue?
 pub fn LiquidContext::new() -> Self
+pub fn LiquidContext::register_template(Self, String, String) -> Unit
 #alias(op_set)
 pub fn LiquidContext::set(Self, String, LiquidValue) -> Unit
 pub fn LiquidContext::to_json(Self) -> Json
