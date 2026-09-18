@@ -228,57 +228,13 @@ fn parse_template(template : String) -> Array[LiquidNode] {
       "variable" => {
         let search_start = start + 2
         let tag_remaining = template[search_start:].to_owned()
-        match tag_remaining.find("}}") {
+        match find_unquoted(tag_remaining, "}}") {
           Some(relative_end) => {
             let end = search_start + relative_end
             let tag_content = template[start + 2:end].to_owned()
             let trimmed_content = tag_content.to_string()
 
-            // Parse variable and filters
-            let parts = trimmed_content.split("|").collect()
-            let variable_name = parts[0].to_owned().trim(chars=" \t").to_owned()
-            let filters = if parts.length() > 1 {
-              let filter_objs : Array[Filter] = []
-              for i in 1..<parts.length() {
-                let filter_str = parts[i]
-                  .to_owned()
-                  .trim(chars=" \t")
-                  .to_owned()
-                // Parse filter parameters (e.g., "truncate: 50" or "slice: 1, 3")
-                if filter_str.contains(":") {
-                  let filter_parts = filter_str.split(":").collect()
-                  let filter_name = filter_parts[0]
-                    .to_owned()
-                    .trim(chars=" \t")
-                    .to_owned()
-                  let params = if filter_parts.length() > 1 {
-                    let param_str = filter_parts[1]
-                      .to_owned()
-                      .trim(chars=" \t")
-                      .to_owned()
-                    // Handle multiple parameters separated by commas
-                    if param_str.contains(",") {
-                      let param_parts = param_str.split(",").collect()
-                      let multiple_params : Array[String] = []
-                      for param in param_parts {
-                        multiple_params.push(param.trim(chars=" \t").to_owned())
-                      }
-                      multiple_params
-                    } else {
-                      [param_str]
-                    }
-                  } else {
-                    []
-                  }
-                  filter_objs.push(filter(filter_name, params))
-                } else {
-                  filter_objs.push(filter(filter_str, []))
-                }
-              }
-              filter_objs
-            } else {
-              []
-            }
+            let (variable_name, filters) = parse_output(trimmed_content)
             nodes.push(Variable(variable_name, filters))
             current = end + 2
           }
@@ -292,7 +248,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
       "logic" => {
         let search_start = start + 2
         let tag_remaining = template[search_start:].to_owned()
-        match tag_remaining.find("%}") {
+        match find_unquoted(tag_remaining, "%}") {
           Some(relative_end) => {
             let end = search_start + relative_end
             let tag_content = template[start + 2:end].to_owned()
@@ -497,13 +453,10 @@ fn parse_template(template : String) -> Array[LiquidNode] {
                 .to_owned()
                 .trim(chars=" \t")
                 .to_owned()
-              let parts = assign_content.split("=").collect()
+              let parts = split_unquoted(assign_content, "=")
               if parts.length() >= 2 {
-                let var_name = parts[0].to_owned().trim(chars=" \t").to_owned()
-                let expression = parts[1]
-                  .to_owned()
-                  .trim(chars=" \t")
-                  .to_owned()
+                let var_name = parts[0].trim(chars=" \t").to_owned()
+                let expression = parts[1].trim(chars=" \t").to_owned()
                 nodes.push(Assign(var_name, expression))
               } else {
                 nodes.push(Comment(trimmed_content))
@@ -539,54 +492,7 @@ fn parse_template(template : String) -> Array[LiquidNode] {
                 .to_owned()
                 .trim(chars=" \t")
                 .to_owned()
-              // Parse variable and filters (similar to variable parsing)
-              let parts = echo_content.split("|").collect()
-              let variable_name = parts[0]
-                .to_owned()
-                .trim(chars=" \t")
-                .to_owned()
-              let filters = if parts.length() > 1 {
-                let filter_objs : Array[Filter] = []
-                for i in 1..<parts.length() {
-                  let filter_str = parts[i]
-                    .to_owned()
-                    .trim(chars=" \t")
-                    .to_owned()
-                  if filter_str.contains(":") {
-                    let filter_parts = filter_str.split(":").collect()
-                    let filter_name = filter_parts[0]
-                      .to_owned()
-                      .trim(chars=" \t")
-                      .to_owned()
-                    let params = if filter_parts.length() > 1 {
-                      let param_str = filter_parts[1]
-                        .to_owned()
-                        .trim(chars=" \t")
-                        .to_owned()
-                      if param_str.contains(",") {
-                        let param_parts = param_str.split(",").collect()
-                        let multiple_params : Array[String] = []
-                        for param in param_parts {
-                          multiple_params.push(
-                            param.trim(chars=" \t").to_owned(),
-                          )
-                        }
-                        multiple_params
-                      } else {
-                        [param_str]
-                      }
-                    } else {
-                      []
-                    }
-                    filter_objs.push(filter(filter_name, params))
-                  } else {
-                    filter_objs.push(filter(filter_str, []))
-                  }
-                }
-                filter_objs
-              } else {
-                []
-              }
+              let (variable_name, filters) = parse_output(echo_content)
               nodes.push(Echo(variable_name, filters))
             } else if trimmed_content.strip_prefix("ifchanged") != None {
               // Parse ifchanged tag: {% ifchanged %}...{% endifchanged %}
