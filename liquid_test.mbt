@@ -247,8 +247,8 @@ test "condition evaluation truthy values" {
 }
 
 ///|
-test "condition evaluation falsy values" {
-  // Test condition evaluation with falsy values
+test "condition evaluation distinguishes falsy and empty values" {
+  // Only false and null are falsy in Liquid
   let context = LiquidContext::new()
 
   // Boolean false
@@ -259,17 +259,17 @@ test "condition evaluation falsy values" {
   // Empty string
   context.set("empty_string", string_value(""))
   let result2 = evaluate_condition("empty_string", context)
-  assert_eq(result2, false)
+  assert_eq(result2, true)
 
   // Zero number
   context.set("zero_number", number_value(0.0))
   let result3 = evaluate_condition("zero_number", context)
-  assert_eq(result3, false)
+  assert_eq(result3, true)
 
   // Empty array
   context.set("empty_array", array_value([]))
   let result4 = evaluate_condition("empty_array", context)
-  assert_eq(result4, false)
+  assert_eq(result4, true)
 
   // Null value
   context.set("null_value", null_value())
