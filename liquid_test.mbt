@@ -305,14 +305,11 @@ test "edge case only text template" {
 test "edge case malformed liquid tags" {
   // Test malformed liquid tags (unclosed)
   let template = parse("Hello {{ name")
-  json_inspect(template, content={
-    "nodes": [["Text", "Hello "], ["Text", "Hello {{ name"]],
-  })
+  json_inspect(template, content={ "nodes": [["Text", "Hello {{ name"]] })
   let context = LiquidContext::new()
   context.set("name", string_value("World"))
   let result = template.render(context)
-  // The parser treats this as "Hello " + "Hello {{ name" (due to parsing logic)
-  assert_eq(result, "Hello Hello {{ name") // Should treat as text
+  assert_eq(result, "Hello {{ name") // Should treat as text
 }
 
 ///|
@@ -514,16 +511,13 @@ test "basic comment tag" {
   json_inspect(template, content={
     "nodes": [
       ["Text", "Hello "],
-      ["Comment", "comment"],
-      ["Text", "This is ignored"],
-      ["Comment", "endcomment"],
+      ["Comment", "This is ignored"],
       ["Text", "World!"],
     ],
   })
   let context = LiquidContext::new()
   let result = template.render(context)
-  // For now, comment parsing isn't fully implemented, so content shows
-  assert_eq(result, "Hello This is ignoredWorld!")
+  assert_eq(result, "Hello World!")
 }
 
 ///|
@@ -553,17 +547,14 @@ test "mixed variable and logic tags" {
       ["Text", "Hello "],
       ["Variable", "name", []],
       ["Text", "! "],
-      ["Comment", "comment"],
-      ["Text", "greeting"],
-      ["Comment", "endcomment"],
+      ["Comment", "greeting"],
       ["Text", " Welcome!"],
     ],
   })
   let context = LiquidContext::new()
   context.set("name", string_value("World"))
   let result = template.render(context)
-  // For now, comment content shows since parsing isn't fully implemented
-  assert_eq(result, "Hello World! greeting Welcome!")
+  assert_eq(result, "Hello World!  Welcome!")
 }
 
 ///|
@@ -571,18 +562,13 @@ test "unless tag basic" {
   // Test unless tag (opposite of if)
   let template = parse("{% unless show_message %}Hidden content{% endunless %}")
   json_inspect(template, content={
-    "nodes": [
-      ["Unless", "show_message", [["Text", "UNLESS_TRUE"]]],
-      ["Text", "Hidden content"],
-      ["Comment", "endunless"],
-    ],
+    "nodes": [["Unless", "show_message", [["Text", "Hidden content"]]]],
   })
   let context = LiquidContext::new()
   context.set("show_message", bool_value(false))
 
-  // Since this is basic parsing, it will be treated as text for now
   let result = template.render(context)
-  assert_eq(result, "UNLESS_TRUEHidden content") // Parser recognizes unless tag + content
+  assert_eq(result, "Hidden content")
 }
 
 ///|
@@ -736,16 +722,13 @@ test "comment tag parsing" {
   json_inspect(template, content={
     "nodes": [
       ["Text", "Before"],
-      ["Comment", "comment"],
-      ["Text", "This is a comment"],
-      ["Comment", "endcomment"],
+      ["Comment", "This is a comment"],
       ["Text", "After"],
     ],
   })
   let context = LiquidContext::new()
   let result = template.render(context)
-  // For now, comment content shows as the multi-tag parsing isn't fully implemented
-  assert_eq(result, "BeforeThis is a commentAfter")
+  assert_eq(result, "BeforeAfter")
 }
 
 ///|
@@ -756,33 +739,23 @@ test "capture tag parsing" {
   )
   json_inspect(template, content={
     "nodes": [
-      ["Capture", "my_var", [["Text", "CAPTURED_CONTENT"]]],
-      ["Text", "content"],
-      ["Comment", "endcapture"],
+      ["Capture", "my_var", [["Text", "content"]]],
       ["Variable", "my_var", []],
     ],
   })
   let context = LiquidContext::new()
   let result = template.render(context)
-  // For now, capture content shows as text since multi-tag parsing isn't fully implemented
-  assert_eq(result, "contentCAPTURED_CONTENT")
+  assert_eq(result, "content")
 }
 
 ///|
 test "raw tag parsing" {
   // Test raw tag parsing (basic recognition)
   let template = parse("{% raw %}{{ not_processed }}{% endraw %}")
-  json_inspect(template, content={
-    "nodes": [
-      ["Raw", "{{ not_processed }} liquid code"],
-      ["Variable", "not_processed", []],
-      ["Comment", "endraw"],
-    ],
-  })
+  json_inspect(template, content={ "nodes": [["Raw", "{{ not_processed }}"]] })
   let context = LiquidContext::new()
   let result = template.render(context)
-  // For now, raw content should be ignored
-  assert_eq(result, "{{ not_processed }} liquid code")
+  assert_eq(result, "{{ not_processed }}")
 }
 
 // Advanced filter tests
@@ -2137,22 +2110,12 @@ test "if tag execution" {
   // Test if tag execution
   let template = parse("{% if show_message %}Hello World{% endif %}")
   json_inspect(template, content={
-    "nodes": [
-      [
-        "If",
-        "show_message",
-        [["Text", "TRUE_BRANCH"]],
-        [],
-        [[["Text", "FALSE_BRANCH"]]],
-      ],
-      ["Text", "Hello World"],
-      ["Comment", "endif"],
-    ],
+    "nodes": [["If", "show_message", [["Text", "Hello World"]], [], null]],
   })
   let context = LiquidContext::new()
   context.set("show_message", bool_value(true))
   let result = template.render(context)
-  assert_eq(result, "TRUE_BRANCHHello World") // Parser recognizes if tag + content
+  assert_eq(result, "Hello World")
 }
 
 ///|
@@ -2165,11 +2128,9 @@ test "for tag execution" {
         "For",
         "item",
         "items",
-        [["Variable", "item", []], ["Text", " "]],
+        [["Variable", "item", []]],
         { "reversed": false },
       ],
-      ["Variable", "item", []],
-      ["Comment", "endfor"],
     ],
   })
   let context = LiquidContext::new()
@@ -2180,7 +2141,7 @@ test "for tag execution" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result, "a b c c") // Parser recognizes for tag + content
+  assert_eq(result, "abc")
 }
 
 ///|
@@ -2190,7 +2151,7 @@ test "unless tag execution" {
   let context = LiquidContext::new()
   context.set("is_hidden", bool_value(false))
   let result = template.render(context)
-  assert_eq(result, "UNLESS_TRUEVisible content") // Parser recognizes unless tag + content
+  assert_eq(result, "Visible content")
 }
 
 ///|
@@ -2202,7 +2163,7 @@ test "case tag execution" {
   let context = LiquidContext::new()
   context.set("user_type", string_value("guest"))
   let result = template.render(context)
-  assert_eq(result, "Guest AccessAdminUser") // Parser recognizes case tag + content
+  assert_eq(result, "User")
 }
 
 ///|
@@ -2216,7 +2177,7 @@ test "nested control flow" {
   let items = array_value([string_value("test")])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result, "TRUE_BRANCHtest test") // Nested parsing not fully implemented yet
+  assert_eq(result, "test")
 }
 
 ///|
@@ -2225,22 +2186,14 @@ test "control flow with conditions" {
   let template = parse("{% if age >= 18 and is_member %}Welcome{% endif %}")
   json_inspect(template, content={
     "nodes": [
-      [
-        "If",
-        "age >= 18 and is_member",
-        [["Text", "TRUE_BRANCH"]],
-        [],
-        [[["Text", "FALSE_BRANCH"]]],
-      ],
-      ["Text", "Welcome"],
-      ["Comment", "endif"],
+      ["If", "age >= 18 and is_member", [["Text", "Welcome"]], [], null],
     ],
   })
   let context = LiquidContext::new()
   context.set("age", number_value(25.0))
   context.set("is_member", bool_value(true))
   let result = template.render(context)
-  assert_eq(result, "TRUE_BRANCHWelcome") // Condition evaluation works
+  assert_eq(result, "Welcome") // Condition evaluation works
 }
 
 // Cycle Tag Tests
@@ -2262,11 +2215,11 @@ test "cycle tag parsing" {
   // Test cycle tag parsing recognition
   let template = parse("{% cycle group1: 'red', 'green', 'blue' %}")
   json_inspect(template, content={
-    "nodes": [["Cycle", "default", ["odd", "even"]]],
+    "nodes": [["Cycle", "group1", ["red", "green", "blue"]]],
   })
   let context = LiquidContext::new()
   let result = template.render(context)
-  assert_eq(result, "odd") // Basic cycle implementation
+  assert_eq(result, "red")
 }
 
 ///|
@@ -2309,7 +2262,9 @@ test "tablerow tag basic" {
   assert_eq(result.contains("<table>"), true)
   assert_eq(result.contains("<tr>"), true)
   assert_eq(result.contains("<td>"), true)
-  assert_eq(result.contains("TABLE_CELL"), true)
+  assert_eq(
+    result, "<table>\n<tr>\n<td>A</td>\n<td>B</td>\n</tr>\n<tr>\n<td>C</td>\n<td>D</td>\n</tr>\n</table>",
+  )
 }
 
 ///|
@@ -2456,8 +2411,7 @@ test "loop control flow recognition" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  // For now, this will parse as separate tags since full multi-tag parsing isn't implemented
-  assert_eq(result.contains("a "), true) // Should contain loop content
+  assert_eq(result.contains("astop"), true) // Should contain loop content
 }
 
 // Liquid Tag Tests
@@ -2470,7 +2424,7 @@ test "liquid tag parsing" {
   )
   let context = LiquidContext::new()
   let result = template.render(context)
-  assert_eq(result, "LIQUID_BLOCKassign name = 'World'") // Parser recognizes liquid tag + content
+  assert_eq(result, "assign name = 'World'")
 }
 
 ///|
@@ -2547,7 +2501,7 @@ test "style tag parsing" {
   let context = LiquidContext::new()
   let result = template.render(context)
   assert_eq(result.contains("<style>"), true)
-  assert_eq(result.contains("CSS_CONTENT"), true)
+  assert_eq(result, "<style>body { color: red; }</style>")
 }
 
 ///|
@@ -3201,8 +3155,7 @@ test "case statement in template parsing" {
   let context = LiquidContext::new()
   context.set("user_type", string_value("user"))
   let result = template.render(context)
-  // This will parse as separate tags for now
-  assert_eq(result.contains("User Dashboard"), true) // Should contain case logic
+  assert_eq(result, "User") // Should contain case logic
 }
 
 // Offset and Limit Filter Parameters Tests
@@ -3870,7 +3823,7 @@ test "capture tag parsing in template" {
   context.set("name", string_value("World"))
   let result = template.render(context)
   // Should capture content and then display it
-  assert_eq(result, "Hello World!CAPTURED_CONTENT") // Basic capture parsing
+  assert_eq(result, "Hello World!")
 }
 
 ///|
@@ -3948,7 +3901,7 @@ test "raw tag parsing in template" {
   let template = parse("{% raw %}{{ not_processed }}{% endraw %}")
   let context = LiquidContext::new()
   let result = template.render(context)
-  assert_eq(result, "{{ not_processed }} liquid code") // Raw content without processing
+  assert_eq(result, "{{ not_processed }}") // Raw content without processing
 }
 
 ///|
@@ -3972,9 +3925,7 @@ test "raw tag in complex template" {
   let context = LiquidContext::new()
   context.set("variable", string_value("should not be used"))
   let result = template.render(context)
-  assert_eq(
-    result, "Before {{ not_processed }} liquid codeshould not be used After",
-  )
+  assert_eq(result, "Before {{ variable }} After")
 }
 
 ///|
@@ -3985,8 +3936,7 @@ test "multiple raw tags" {
   )
   let context = LiquidContext::new()
   let result = template.render(context)
-  assert_eq(result.contains("First {{ block }}"), false) // Raw content is replaced
-  assert_eq(result.contains("{{ not_processed }}"), true) // Raw placeholder content
+  assert_eq(result, "First {{ block }} and Second {{ block }}")
 }
 
 ///|
@@ -5301,9 +5251,7 @@ test "template parsing with new tags" {
     "nodes": [["Echo", "name", [{ "name": "upcase", "parameters": [] }]]],
   })
   let template_ifchanged = parse("{% ifchanged %}")
-  json_inspect(template_ifchanged, content={
-    "nodes": [["IfChanged", [["Text", "CHANGED_CONTENT"]]]],
-  })
+  json_inspect(template_ifchanged, content={ "nodes": [["IfChanged", []]] })
 }
 
 ///|
@@ -5665,9 +5613,7 @@ test "template parsing with layout tags" {
   let template_layout = parse("{% layout 'base' %}")
   json_inspect(template_layout, content={ "nodes": [["Layout", "'base'"]] })
   let template_block = parse("{% block 'header' %}")
-  json_inspect(template_block, content={
-    "nodes": [["Block", "'header'", [["Text", "BLOCK_CONTENT"]]]],
-  })
+  json_inspect(template_block, content={ "nodes": [["Block", "'header'", []]] })
   let template_content = parse("{% content %}")
   json_inspect(template_content, content={ "nodes": ["Content"] })
 }
