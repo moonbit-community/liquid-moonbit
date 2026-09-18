@@ -34,7 +34,14 @@ pub fn evaluate_expression(
   expression : String,
   context : LiquidContext,
 ) -> LiquidValue {
-  let text = expression.trim().to_owned()
+  let (text, filters) = parse_output(expression)
+  if !filters.is_empty() {
+    return apply_context_filters(
+      evaluate_expression(text, context),
+      filters,
+      context,
+    )
+  }
   if text.length() >= 2 &&
     (text[0] == 39 || text[0] == 34) &&
     text[text.length() - 1] == text[0] {

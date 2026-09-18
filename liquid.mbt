@@ -202,16 +202,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
   match node {
     Text(text) => text
     Variable(var_name, filters) =>
-      match context.get(var_name) {
-        Some(value) => {
-          let mut result = value
-          for filter_obj in filters {
-            result = apply_filter_with_params(result, filter_obj)
-          }
-          result.to_string()
-        }
-        None => handle_error(context, "Variable '" + var_name + "' not found")
-      }
+      render_expression(var_name, filters, context, true)
     For(loop_var, collection, body, modifiers) =>
       match context.get(collection) {
         Some(Array(items)) => {
@@ -559,17 +550,7 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
       new_value.to_string()
     }
     Echo(var_name, filters) =>
-      // Echo tag - like Variable but with different semantics (always outputs something)
-      match context.get(var_name) {
-        Some(value) => {
-          let mut result = value
-          for filter_obj in filters {
-            result = apply_filter_with_params(result, filter_obj)
-          }
-          result.to_string()
-        }
-        None => "" // Echo outputs empty string for missing variables instead of error
-      }
+      render_expression(var_name, filters, context, false)
     IfChanged(body) => {
       // IfChanged tag - only render if content has changed from previous iteration
       // For now, implement a simple version that always renders
@@ -675,6 +656,8 @@ pub fn apply_filter_with_params(
   filter_obj : Filter,
 ) -> LiquidValue {
   match filter_obj.name {
+    "default" =>
+      default_value(value, filter_obj.parameters, LiquidContext::new())
     "truncate" =>
       match value {
         String(s) => {
