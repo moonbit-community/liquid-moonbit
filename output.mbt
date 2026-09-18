@@ -79,6 +79,7 @@ fn render_expression(
   match value {
     Null =>
       if report_missing &&
+        evaluate_expression(expression, context) is Null &&
         context.get(expression) is None &&
         expression != "nil" &&
         expression != "null" {
