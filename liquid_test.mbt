@@ -1458,7 +1458,7 @@ test "filter date basic" {
   // Test basic date filter
   let date_value = string_value("2024-01-15")
   let date_result = apply_filter(date_value, "date")
-  assert_eq(date_result.to_string(), "January 01, 2024")
+  assert_eq(date_result.to_string(), "2024-01-15")
 }
 
 ///|
@@ -1466,7 +1466,7 @@ test "filter date non-year" {
   // Test date filter with non-year string
   let date_value = string_value("some-date")
   let date_result = apply_filter(date_value, "date")
-  assert_eq(date_result.to_string(), "some-date (formatted)")
+  assert_eq(date_result.to_string(), "some-date")
 }
 
 ///|
@@ -1474,7 +1474,7 @@ test "filter date_to_string" {
   // Test date_to_string filter
   let date_value = string_value("2024-01-15")
   let result = apply_filter(date_value, "date_to_string")
-  assert_eq(result.to_string(), "2024-01-15 (date)")
+  assert_eq(result.to_string(), "15 Jan 2024")
 }
 
 ///|
@@ -1488,7 +1488,7 @@ test "filter date_to_xmlschema" {
 ///|
 test "filter date_to_rfc822" {
   // Test date_to_rfc822 filter
-  let date_value = string_value("2024")
+  let date_value = string_value("2024-01-01")
   let result = apply_filter(date_value, "date_to_rfc822")
   assert_eq(result.to_string(), "Mon, 01 Jan 2024 00:00:00 +0000")
 }
@@ -1498,7 +1498,7 @@ test "filter strftime" {
   // Test strftime filter
   let date_value = string_value("2024-01-15")
   let result = apply_filter(date_value, "strftime")
-  assert_eq(result.to_string(), "2024-01-15 (strftime)")
+  assert_eq(result.to_string(), "2024-01-15")
 }
 
 ///|
@@ -1510,7 +1510,7 @@ test "date filters in template" {
   let context = LiquidContext::new()
   context.set("date", string_value("2024-12-25"))
   let result = template.render(context)
-  let expected = "Published: 2024-01-15\nISO: 2024-12-25T00:00:00Z"
+  let expected = "Published: 2024-12-25\nISO: 2024-12-25T00:00:00Z"
   assert_eq(result, expected)
 }
 
@@ -1521,7 +1521,7 @@ test "date filter chaining" {
   let context = LiquidContext::new()
   context.set("post_date", string_value("2025-06-15"))
   let result = template.render(context)
-  assert_eq(result, "2025-06-15 (FORMATTED)")
+  assert_eq(result, "2025-06-15")
 }
 
 // Error Handling Policy Tests
@@ -3253,7 +3253,7 @@ test "date filter with format parameter" {
   let context = LiquidContext::new()
   context.set("date", string_value("2024-01-15"))
   let result = template.render(context)
-  assert_eq(result, "January 15, 2024") // Parameter parsing issue with format string
+  assert_eq(result, "January 15, 2024")
 }
 
 ///|
@@ -3273,7 +3273,7 @@ test "date filter with US format" {
   let context = LiquidContext::new()
   context.set("date", string_value("2024-06-15"))
   let result = template.render(context)
-  assert_eq(result, "01/15/2024")
+  assert_eq(result, "06/15/2024")
 }
 
 ///|
@@ -3283,7 +3283,7 @@ test "date filter with custom format" {
   let context = LiquidContext::new()
   context.set("date", string_value("2024-03-10"))
   let result = template.render(context)
-  assert_eq(result, "2024-03-10 (%A, %B %d)") // Parameter parsing truncates format
+  assert_eq(result, "Sunday, March 10")
 }
 
 ///|
@@ -3293,7 +3293,7 @@ test "date filter without parameter" {
   let context = LiquidContext::new()
   context.set("date", string_value("2024-05-20"))
   let result = template.render(context)
-  assert_eq(result, "2024-01-15") // Uses default format
+  assert_eq(result, "2024-05-20") // Uses default format
 }
 
 ///|
@@ -3303,7 +3303,7 @@ test "date filter chaining with parameters" {
   let context = LiquidContext::new()
   context.set("date", string_value("2023-11-30"))
   let result = template.render(context)
-  assert_eq(result, "DECEMBER 25, 2023") // Parameter parsing issue
+  assert_eq(result, "NOVEMBER 30, 2023") // Parameter parsing issue
 }
 
 // Where Filter with Parameters Tests
@@ -4347,7 +4347,7 @@ test "date filter parameter variations" {
   let result_non_year = apply_filter_with_params(
     non_year_date, filter_us_format,
   )
-  assert_eq(result_non_year.to_string(), "some-date (US format)")
+  assert_eq(result_non_year.to_string(), "some-date")
 
   // Test date filter with non-string value
   let number_val = number_value(2024.0)
@@ -4566,12 +4566,12 @@ test "date filter format edge cases v2" {
   let date_2023 = string_value("2023-12-01")
   let filter_long = filter("date", ["%B %d, %Y"])
   let result_2023_long = apply_filter_with_params(date_2023, filter_long)
-  assert_eq(result_2023_long.to_string(), "December 25, 2023")
+  assert_eq(result_2023_long.to_string(), "December 01, 2023")
 
   // Test date filter with non-2024 date and long format
   let date_other = string_value("2022-01-01")
   let result_other_long = apply_filter_with_params(date_other, filter_long)
-  assert_eq(result_other_long.to_string(), "2022-01-01 (long format)")
+  assert_eq(result_other_long.to_string(), "January 01, 2022")
 }
 
 ///|

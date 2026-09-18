@@ -653,3 +653,22 @@ This MoonBit implementation **exceeds** typical OCaml Liquid libraries in severa
 - **Regression Prevention**: Structural changes immediately detected
 - **Developer Productivity**: Focus on features, not test maintenance
 - **Documentation**: Tests serve as living documentation of parsing behavior
+### Numeric and date filter behavior
+
+Parameterized `plus`, `minus`, `times`, `divided_by`, `modulo`, and `round`
+use the supplied numeric argument (including signed decimals and numeric strings).
+`divided_by` floors the result for an integer literal divisor and preserves the
+fraction for a decimal divisor. The public value model still stores numbers as
+`Double`; it does not retain separate integer and decimal value types.
+Division or modulo by zero produces null; invalid numeric arguments leave the
+input unchanged. Calls without arguments retain the existing API defaults.
+
+Date filters accept `YYYY-MM-DD` and ISO timestamps with seconds, optionally
+followed by `Z` or a `+HH:MM` / `-HH:MM` offset. They validate calendar dates,
+including leap years, and preserve the supplied wall time and offset.
+`date` and `strftime` default to `%Y-%m-%d`; `date_to_string` uses `%d %b %Y`.
+Supported directives are `%Y`, `%y`, `%m`, `%d`, `%e`, `%B`, `%b`, `%h`, `%A`,
+`%a`, `%j`, `%w`, `%u`, `%H`, `%I`, `%M`, `%S`, `%p`, `%z`, `%Z`, `%F`, `%T`,
+`%R`, `%D`, `%n`, `%t`, and `%%`. Invalid dates, unsupported directives, and
+unsupported input forms (including `now`, natural-language dates, and Unix
+ timestamps) leave the input unchanged.
