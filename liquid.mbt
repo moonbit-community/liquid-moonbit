@@ -145,74 +145,20 @@ fn parse_template(template : String) -> Array[LiquidNode] {
     let remaining = template[current:].to_owned()
     let variable_tag = remaining.find("{{")
     let logic_tag = remaining.find("{%")
-    // Whitespace control detection
-    let variable_tag_strip = remaining.find("{{-")
-    let logic_tag_strip = remaining.find("{%-")
-
-    // Determine which tag comes first, prioritizing whitespace control
-    let (tag_start, tag_type, strip_left) = match
-      (variable_tag_strip, logic_tag_strip, variable_tag, logic_tag) {
-      (Some(var_strip_pos), Some(logic_strip_pos), _, _) =>
-        if var_strip_pos < logic_strip_pos {
-          (var_strip_pos, "variable", true)
-        } else {
-          (logic_strip_pos, "logic", true)
-        }
-      (Some(var_strip_pos), None, Some(var_pos), _) =>
-        if var_strip_pos < var_pos {
-          (var_strip_pos, "variable", true)
-        } else {
-          (var_pos, "variable", false)
-        }
-      (Some(var_strip_pos), None, None, Some(logic_pos)) =>
-        if var_strip_pos < logic_pos {
-          (var_strip_pos, "variable", true)
-        } else {
-          (logic_pos, "logic", false)
-        }
-      (Some(var_strip_pos), None, None, None) =>
-        (var_strip_pos, "variable", true)
-      (None, Some(logic_strip_pos), Some(var_pos), _) =>
-        if logic_strip_pos < var_pos {
-          (logic_strip_pos, "logic", true)
-        } else {
-          (var_pos, "variable", false)
-        }
-      (None, Some(logic_strip_pos), None, Some(logic_pos)) =>
-        if logic_strip_pos < logic_pos {
-          (logic_strip_pos, "logic", true)
-        } else {
-          (logic_pos, "logic", false)
-        }
-      (None, Some(logic_strip_pos), None, None) =>
-        (logic_strip_pos, "logic", true)
-      (None, None, Some(var_pos), Some(logic_pos)) =>
-        if var_pos < logic_pos {
-          (var_pos, "variable", false)
-        } else {
-          (logic_pos, "logic", false)
-        }
-      (None, None, Some(var_pos), None) => (var_pos, "variable", false)
-      (None, None, None, Some(logic_pos)) => (logic_pos, "logic", false)
-      (None, None, None, None) => {
-        // No more tags, add remaining text
-        if current < len {
-          nodes.push(Text(template[current:].to_owned()))
-        }
+    let (tag_start, tag_type) = match (variable_tag, logic_tag) {
+      (Some(v), Some(l)) => if v < l { (v, "variable") } else { (l, "logic") }
+      (Some(v), None) => (v, "variable")
+      (None, Some(l)) => (l, "logic")
+      (None, None) => {
+        nodes.push(Text(remaining))
         break
       }
     }
     let start = current + tag_start
-
+    let strip_left = start + 2 < len && template[start + 2] == 45
     // Add text before tag (with whitespace control)
     if start > current {
       let mut text = template[current:start].to_owned()
-
-      // Apply whitespace control if previous tag had strip_right
-      if nodes.length() > 0 {
-        // For now, basic implementation - in full version, track previous tag's strip_right
-        text = text
-      }
 
       // Apply whitespace control if current tag has strip_left
       if strip_left {
@@ -231,12 +177,30 @@ fn parse_template(template : String) -> Array[LiquidNode] {
         match find_unquoted(tag_remaining, "}}") {
           Some(relative_end) => {
             let end = search_start + relative_end
-            let tag_content = template[start + 2:end].to_owned()
+            let strip_right = end > start + 2 && template[end - 1] == 45
+            let content_start = start + (if strip_left { 3 } else { 2 })
+            let content_end = end - (if strip_right { 1 } else { 0 })
+            let tag_content = if content_start <= content_end {
+              template[content_start:content_end].to_owned()
+            } else {
+              ""
+            }
             let trimmed_content = tag_content.to_string()
 
             let (variable_name, filters) = parse_output(trimmed_content)
             nodes.push(Variable(variable_name, filters))
             current = end + 2
+            if strip_right {
+              while current < len &&
+                    (
+                      template[current] == 32 ||
+                      template[current] == 9 ||
+                      template[current] == 10 ||
+                      template[current] == 13
+                    ) {
+                current += 1
+              }
+            }
           }
           None => {
             // Malformed tag, treat as text
@@ -251,7 +215,14 @@ fn parse_template(template : String) -> Array[LiquidNode] {
         match find_unquoted(tag_remaining, "%}") {
           Some(relative_end) => {
             let end = search_start + relative_end
-            let tag_content = template[start + 2:end].to_owned()
+            let strip_right = end > start + 2 && template[end - 1] == 45
+            let content_start = start + (if strip_left { 3 } else { 2 })
+            let content_end = end - (if strip_right { 1 } else { 0 })
+            let tag_content = if content_start <= content_end {
+              template[content_start:content_end].to_owned()
+            } else {
+              ""
+            }
             let trimmed_content = tag_content
               .to_string()
               .trim(chars=" \t")
@@ -519,6 +490,17 @@ fn parse_template(template : String) -> Array[LiquidNode] {
               nodes.push(Comment(trimmed_content))
             }
             current = end + 2
+            if strip_right {
+              while current < len &&
+                    (
+                      template[current] == 32 ||
+                      template[current] == 9 ||
+                      template[current] == 10 ||
+                      template[current] == 13
+                    ) {
+                current += 1
+              }
+            }
           }
           None => {
             // Malformed tag, treat as text
