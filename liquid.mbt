@@ -610,195 +610,6 @@ pub fn render_node(node : LiquidNode, context : LiquidContext) -> String {
   }
 }
 
-// Evaluate expressions for assign statements
-
-///|
-pub fn evaluate_expression(
-  expression : String,
-  context : LiquidContext,
-) -> LiquidValue {
-  let trimmed_expr = expression.trim(chars=" \t").to_owned()
-
-  // Check if it's a string literal (quoted)
-  if trimmed_expr.length() >= 2 {
-    let first_char = trimmed_expr[0:1].to_owned()
-    let last_char = trimmed_expr[trimmed_expr.length() - 1:].to_owned()
-    if (first_char == "'" && last_char == "'") ||
-      (first_char == "\"" && last_char == "\"") {
-      let content = trimmed_expr[1:trimmed_expr.length() - 1].to_owned()
-      return string_value(content)
-    }
-  }
-
-  // Check if it's a number (extended check)
-  match trimmed_expr {
-    "0" => return number_value(0.0)
-    "1" => return number_value(1.0)
-    "2" => return number_value(2.0)
-    "3" => return number_value(3.0)
-    "4" => return number_value(4.0)
-    "5" => return number_value(5.0)
-    "10" => return number_value(10.0)
-    "18" => return number_value(18.0)
-    "20" => return number_value(20.0)
-    "25" => return number_value(25.0)
-    "50" => return number_value(50.0)
-    "70" => return number_value(70.0)
-    "75" => return number_value(75.0)
-    "80" => return number_value(80.0)
-    "85" => return number_value(85.0)
-    "90" => return number_value(90.0)
-    "100" => return number_value(100.0)
-    _ => ()
-  }
-
-  // Check if it's a boolean
-  match trimmed_expr {
-    "true" => return bool_value(true)
-    "false" => return bool_value(false)
-    "null" => return null_value()
-    _ => ()
-  }
-
-  // Otherwise, treat as variable lookup
-  match context.get(trimmed_expr) {
-    Some(value) => value
-    None => null_value()
-  }
-}
-
-///|
-pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
-  let trimmed_condition = condition.trim(chars=" \t").to_owned()
-
-  // Check for logical operators first
-  if trimmed_condition.contains(" and ") {
-    let parts = trimmed_condition.split(" and ").collect()
-    if parts.length() == 2 {
-      let left_result = evaluate_condition(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        context,
-      )
-      let right_result = evaluate_condition(
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        context,
-      )
-      return left_result && right_result
-    }
-  }
-  if trimmed_condition.contains(" or ") {
-    let parts = trimmed_condition.split(" or ").collect()
-    if parts.length() == 2 {
-      let left_result = evaluate_condition(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        context,
-      )
-      let right_result = evaluate_condition(
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        context,
-      )
-      return left_result || right_result
-    }
-  }
-  if trimmed_condition.strip_prefix("not ") != None {
-    let inner_condition = trimmed_condition[4:]
-      .to_owned()
-      .trim(chars=" \t")
-      .to_owned()
-    return !evaluate_condition(inner_condition, context)
-  }
-
-  // Check for comparison operators
-  if trimmed_condition.contains(">=") {
-    let parts = trimmed_condition.split(">=").collect()
-    if parts.length() == 2 {
-      return compare_values(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        ">=",
-        context,
-      )
-    }
-  }
-  if trimmed_condition.contains("<=") {
-    let parts = trimmed_condition.split("<=").collect()
-    if parts.length() == 2 {
-      return compare_values(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        "<=",
-        context,
-      )
-    }
-  }
-  if trimmed_condition.contains("!=") {
-    let parts = trimmed_condition.split("!=").collect()
-    if parts.length() == 2 {
-      return compare_values(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        "!=",
-        context,
-      )
-    }
-  }
-  if trimmed_condition.contains("==") {
-    let parts = trimmed_condition.split("==").collect()
-    if parts.length() == 2 {
-      return compare_values(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        "==",
-        context,
-      )
-    }
-  }
-  if trimmed_condition.contains(">") {
-    let parts = trimmed_condition.split(">").collect()
-    if parts.length() == 2 {
-      return compare_values(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        ">",
-        context,
-      )
-    }
-  }
-  if trimmed_condition.contains("<") {
-    let parts = trimmed_condition.split("<").collect()
-    if parts.length() == 2 {
-      return compare_values(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        "<",
-        context,
-      )
-    }
-  }
-  if trimmed_condition.contains(" contains ") {
-    let parts = trimmed_condition.split(" contains ").collect()
-    if parts.length() == 2 {
-      return compare_values(
-        parts[0].to_owned().trim(chars=" \t").to_owned(),
-        parts[1].to_owned().trim(chars=" \t").to_owned(),
-        "contains",
-        context,
-      )
-    }
-  }
-
-  // Simple variable truthiness check
-  match context.get(trimmed_condition) {
-    Some(Bool(b)) => b
-    Some(String(s)) => s != ""
-    Some(Number(n)) => n != 0.0
-    Some(Array(arr)) => arr.length() > 0
-    Some(Object(_)) => true
-    Some(Null) => false
-    None => false
-  }
-}
-
 // Compare two values with an operator
 
 ///|
@@ -811,16 +622,15 @@ fn compare_values(
   let left_value = evaluate_expression(left, context)
   let right_value = evaluate_expression(right, context)
   match operator {
-    "==" => left_value.to_string() == right_value.to_string()
-    "!=" => left_value.to_string() != right_value.to_string()
+    "==" => values_equal(left_value, right_value)
+    "!=" => !values_equal(left_value, right_value)
     "contains" =>
       match (left_value, right_value) {
         (String(haystack), String(needle)) => haystack.contains(needle)
         (Array(arr), needle) => {
-          let needle_str = needle.to_string()
           let mut found = false
           for item in arr {
-            if item.to_string() == needle_str {
+            if values_equal(item, needle) {
               found = true
               break
             }
