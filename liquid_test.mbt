@@ -1620,11 +1620,10 @@ test "error policy context isolation" {
 test "whitespace control parsing" {
   // Test that whitespace control syntax is recognized
   let template = parse("{{- name -}}")
-  json_inspect(template, content={ "nodes": [["Variable", "- name -", []]] })
+  json_inspect(template, content={ "nodes": [["Variable", "name", []]] })
   let context = LiquidContext::new()
-  context.set("- name -", string_value("World")) // Parser treats this as variable name
+  context.set("name", string_value("World"))
   let result = template.render(context)
-  // For now, whitespace control isn't fully implemented
   assert_eq(result, "World")
 }
 
@@ -1633,7 +1632,6 @@ test "whitespace control logic tags" {
   // Test whitespace control with logic tags
   let template = parse("{%- assign x = 'test' -%}{{ x }}")
   let context = LiquidContext::new()
-  context.set("x", string_value("test")) // Set manually since assign parsing is basic
   let result = template.render(context)
   assert_eq(result, "test")
 }
@@ -1643,9 +1641,9 @@ test "whitespace control mixed" {
   // Test mixed whitespace control
   let template = parse("Before {{- name }} After")
   let context = LiquidContext::new()
-  context.set("- name", string_value("Content")) // Parser treats this as variable name
+  context.set("name", string_value("Content"))
   let result = template.render(context)
-  assert_eq(result, "Before Content After")
+  assert_eq(result, "BeforeContent After")
 }
 
 // WhitespaceControl Struct Tests
