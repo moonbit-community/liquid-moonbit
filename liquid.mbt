@@ -656,6 +656,14 @@ pub fn apply_filter_with_params(
   filter_obj : Filter,
 ) -> LiquidValue {
   match filter_obj.name {
+    "plus" | "minus" | "times" | "divided_by" | "modulo" | "round" =>
+      numeric_filter(value, filter_obj.name, filter_obj.parameters)
+    "date"
+    | "strftime"
+    | "date_to_string"
+    | "date_to_xmlschema"
+    | "date_to_rfc822" =>
+      date_filter(value, filter_obj.name, filter_obj.parameters)
     "default" =>
       default_value(value, filter_obj.parameters, LiquidContext::new())
     "truncate" =>
@@ -899,59 +907,6 @@ pub fn apply_filter_with_params(
             limited.push(arr[i])
           }
           Array(limited)
-        }
-        _ => value
-      }
-    "date" =>
-      match value {
-        String(date_str) => {
-          let format = if filter_obj.parameters.length() > 0 {
-            let format_param = filter_obj.parameters[0]
-            // Remove quotes from format parameter
-            if format_param.length() >= 2 &&
-              format_param[0:1].to_owned() == "'" &&
-              format_param[format_param.length() - 1:].to_owned() == "'" {
-              format_param[1:format_param.length() - 1].to_owned()
-            } else if format_param.length() >= 2 &&
-              format_param[0:1].to_owned() == "\"" &&
-              format_param[format_param.length() - 1:].to_owned() == "\"" {
-              format_param[1:format_param.length() - 1].to_owned()
-            } else {
-              format_param
-            }
-          } else {
-            "%Y-%m-%d" // Default format
-          }
-
-          // Basic date formatting based on format string
-          let formatted_date = match format {
-            "%Y-%m-%d" =>
-              if date_str.contains("2024") {
-                "2024-01-15"
-              } else if date_str.contains("2023") {
-                "2023-12-25"
-              } else {
-                date_str + " (formatted)"
-              }
-            "%B %d, %Y" =>
-              if date_str.contains("2024") {
-                "January 15, 2024"
-              } else if date_str.contains("2023") {
-                "December 25, 2023"
-              } else {
-                date_str + " (long format)"
-              }
-            "%m/%d/%Y" =>
-              if date_str.contains("2024") {
-                "01/15/2024"
-              } else if date_str.contains("2023") {
-                "12/25/2023"
-              } else {
-                date_str + " (US format)"
-              }
-            _ => date_str + " (" + format + ")"
-          }
-          String(formatted_date)
         }
         _ => value
       }
@@ -1646,41 +1601,11 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         }
         _ => value
       }
-    "date" =>
-      match value {
-        String(date_str) =>
-          // Simple date formatting - for now just return formatted string
-          // In a full implementation, this would parse and format dates properly
-          if date_str.contains("2023") ||
-            date_str.contains("2024") ||
-            date_str.contains("2025") {
-            String("January 01, " + date_str[0:4].to_owned())
-          } else {
-            String(date_str + " (formatted)")
-          }
-        _ => value
-      }
-    "date_to_string" =>
-      match value {
-        String(s) => String(s + " (date)")
-        _ => value
-      }
-    "date_to_xmlschema" =>
-      match value {
-        String(date_str) => String(date_str + "T00:00:00Z")
-        _ => value
-      }
-    "date_to_rfc822" =>
-      match value {
-        String(date_str) =>
-          String("Mon, 01 Jan " + date_str + " 00:00:00 +0000")
-        _ => value
-      }
-    "strftime" =>
-      match value {
-        String(date_str) => String(date_str + " (strftime)")
-        _ => value
-      }
+    "date"
+    | "strftime"
+    | "date_to_string"
+    | "date_to_xmlschema"
+    | "date_to_rfc822" => date_filter(value, filter, [])
     "capitalize" =>
       match value {
         String(s) =>
