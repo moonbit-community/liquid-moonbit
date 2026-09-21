@@ -672,3 +672,28 @@ Supported directives are `%Y`, `%y`, `%m`, `%d`, `%e`, `%B`, `%b`, `%h`, `%A`,
 `%R`, `%D`, `%n`, `%t`, and `%%`. Invalid dates, unsupported directives, and
 unsupported input forms (including `now`, natural-language dates, and Unix
  timestamps) leave the input unchanged.
+
+### Registering templates
+
+Templates used by `include` and `render` must be registered by the caller. Names
+are exact registry keys; the engine does not read arbitrary filesystem paths.
+
+```mbt check
+///|
+test "registered template example" {
+  let context = LiquidContext::new()
+  context.register_template("greeting", "Hello {{ name }}!")
+  context.set("name", string_value("Alice"))
+  assert_eq(parse("{% include 'greeting' %}").render(context), "Hello Alice!")
+  assert_eq(
+    parse("{% render 'greeting', name: 'Bob' %}").render(context),
+    "Hello Bob!",
+  )
+}
+```
+
+`include` shares the caller's variables; `render` starts with an isolated variable
+scope and receives explicitly named arguments. Registered templates remain
+available in nested calls. Missing templates follow the context's error policy,
+and template nesting is limited to 64 calls. Loop control propagates through
+included templates, while an isolated render has its own loop-control state.
