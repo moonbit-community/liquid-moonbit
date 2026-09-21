@@ -102,7 +102,7 @@ pub fn LiquidContext::get(self : LiquidContext, key : String) -> LiquidValue? {
                 current_value = nested_obj.get(parts[part_index].to_owned())
                 part_index = part_index + 1
               }
-              _ => break
+              _ => return None
             }
           }
           current_value
