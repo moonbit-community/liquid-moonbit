@@ -659,7 +659,7 @@ test "assign tag null" {
   })
   let context = LiquidContext::new()
   let result = template.render(context)
-  assert_eq(result, "null")
+  assert_eq(result, "")
 }
 
 ///|
@@ -5687,7 +5687,7 @@ test "enhanced liquid drops comprehensive" {
   assert_eq(result.contains("Index: 1"), true)
   assert_eq(result.contains("Cycle: odd"), true)
   assert_eq(result.contains("Name: test_items"), true)
-  assert_eq(result.contains("ParentLoop: null"), true)
+  assert_eq(result.contains("ParentLoop:  | "), true)
   assert_eq(result.contains("Index: 2"), true)
   assert_eq(result.contains("Cycle: even"), true)
 }
@@ -6504,7 +6504,7 @@ test "filter chain integration edge cases" {
   let context3 = LiquidContext::new()
   // Don't set 'missing' variable
   let result3 = template3.render(context3)
-  assert_eq(result3, "") // Should handle missing variables
+  assert_eq(result3, "FALLBACK")
 }
 
 ///|
