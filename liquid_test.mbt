@@ -1620,11 +1620,10 @@ test "error policy context isolation" {
 test "whitespace control parsing" {
   // Test that whitespace control syntax is recognized
   let template = parse("{{- name -}}")
-  json_inspect(template, content={ "nodes": [["Variable", "- name -", []]] })
+  json_inspect(template, content={ "nodes": [["Variable", "name", []]] })
   let context = LiquidContext::new()
-  context.set("- name -", string_value("World")) // Parser treats this as variable name
+  context.set("name", string_value("World"))
   let result = template.render(context)
-  // For now, whitespace control isn't fully implemented
   assert_eq(result, "World")
 }
 
@@ -1633,7 +1632,6 @@ test "whitespace control logic tags" {
   // Test whitespace control with logic tags
   let template = parse("{%- assign x = 'test' -%}{{ x }}")
   let context = LiquidContext::new()
-  context.set("x", string_value("test")) // Set manually since assign parsing is basic
   let result = template.render(context)
   assert_eq(result, "test")
 }
@@ -1643,9 +1641,9 @@ test "whitespace control mixed" {
   // Test mixed whitespace control
   let template = parse("Before {{- name }} After")
   let context = LiquidContext::new()
-  context.set("- name", string_value("Content")) // Parser treats this as variable name
+  context.set("name", string_value("Content"))
   let result = template.render(context)
-  assert_eq(result, "Before Content After")
+  assert_eq(result, "BeforeContent After")
 }
 
 // WhitespaceControl Struct Tests
@@ -1787,7 +1785,7 @@ test "filter parameters join" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result, "apple'banana'cherry") // The current parsing treats ' | ' as the full parameter
+  assert_eq(result, "apple | banana | cherry")
 }
 
 ///|
@@ -1802,7 +1800,7 @@ test "filter parameters join with quotes" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result, "red'green'blue") // Current parsing treats ', ' as the full parameter
+  assert_eq(result, "red, green, blue")
 }
 
 ///|
@@ -2738,8 +2736,7 @@ test "complex filter parameter combinations" {
         [
           { "name": "compact", "parameters": [] },
           { "name": "slice", "parameters": ["1", "2"] },
-          { "name": "join", "parameters": ["'"] },
-          { "name": "'", "parameters": [] },
+          { "name": "join", "parameters": ["' | '"] },
           { "name": "upcase", "parameters": [] },
         ],
       ],
@@ -2755,7 +2752,7 @@ test "complex filter parameter combinations" {
   ])
   context.set("data", data)
   let result = template.render(context)
-  assert_eq(result, "SECOND'THIRD") // compact -> slice(1,2) -> join(' | ') -> upcase
+  assert_eq(result, "SECOND | THIRD") // compact -> slice(1,2) -> join(' | ') -> upcase
 }
 
 // Actual Control Flow Execution Tests
@@ -2980,7 +2977,7 @@ test "join filter with proper separator" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result, "apple'banana'cherry") // Current parsing treats ' | ' as full parameter
+  assert_eq(result, "apple | banana | cherry")
 }
 
 ///|
@@ -3022,7 +3019,7 @@ test "filter parameters with quotes handling" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result, "red'green'blue") // Current parsing treats ', ' as full parameter
+  assert_eq(result, "red, green, blue")
 }
 
 // Elsif Implementation Tests
@@ -3303,7 +3300,7 @@ test "date filter with format parameter" {
   let context = LiquidContext::new()
   context.set("date", string_value("2024-01-15"))
   let result = template.render(context)
-  assert_eq(result, "2024-01-15 ('%B %d)") // Parameter parsing issue with format string
+  assert_eq(result, "January 15, 2024") // Parameter parsing issue with format string
 }
 
 ///|
@@ -3333,7 +3330,7 @@ test "date filter with custom format" {
   let context = LiquidContext::new()
   context.set("date", string_value("2024-03-10"))
   let result = template.render(context)
-  assert_eq(result, "2024-03-10 ('%A)") // Parameter parsing truncates format
+  assert_eq(result, "2024-03-10 (%A, %B %d)") // Parameter parsing truncates format
 }
 
 ///|
@@ -3353,7 +3350,7 @@ test "date filter chaining with parameters" {
   let context = LiquidContext::new()
   context.set("date", string_value("2023-11-30"))
   let result = template.render(context)
-  assert_eq(result, "2023-11-30 ('%B %D)") // Parameter parsing issue
+  assert_eq(result, "DECEMBER 25, 2023") // Parameter parsing issue
 }
 
 // Where Filter with Parameters Tests
