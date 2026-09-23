@@ -5,7 +5,7 @@
 pub fn LiquidValue::to_string(self : LiquidValue) -> String {
   match self {
     String(s) => s
-    Number(n) => n.to_string()
+    Number(n) | Float(n) => n.to_string()
     Bool(b) => if b { "true" } else { "false" }
     Array(arr) => {
       let items = arr.map(fn(item) { item.to_string() })
@@ -525,25 +525,25 @@ fn compare_values(
       }
     ">" =>
       match (left_value, right_value) {
-        (Number(l), Number(r)) => l > r
+        (Number(l) | Float(l), Number(r) | Float(r)) => l > r
         (String(l), String(r)) => l > r
         _ => false
       }
     "<" =>
       match (left_value, right_value) {
-        (Number(l), Number(r)) => l < r
+        (Number(l) | Float(l), Number(r) | Float(r)) => l < r
         (String(l), String(r)) => l < r
         _ => false
       }
     ">=" =>
       match (left_value, right_value) {
-        (Number(l), Number(r)) => l >= r
+        (Number(l) | Float(l), Number(r) | Float(r)) => l >= r
         (String(l), String(r)) => l >= r
         _ => false
       }
     "<=" =>
       match (left_value, right_value) {
-        (Number(l), Number(r)) => l <= r
+        (Number(l) | Float(l), Number(r) | Float(r)) => l <= r
         (String(l), String(r)) => l <= r
         _ => false
       }
@@ -731,7 +731,7 @@ pub fn apply_filter_with_params(
       }
     "pluralize" =>
       match value {
-        Number(n) =>
+        Number(n) | Float(n) =>
           if filter_obj.parameters.length() >= 2 {
             // Parse singular and plural parameters
             let singular_param = filter_obj.parameters[0]
@@ -1004,55 +1004,61 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
     "truncate" => sequence_filter(value, "truncate", [])
     "plus" =>
       match value {
-        Number(n) => Number(n + 1.0) // Default increment by 1
+        Number(n) | Float(n) =>
+          numeric_result(n + 1.0, value is Float(_) || n != n.trunc()) // Default increment by 1
         String(_) => value
         _ => value
       }
     "minus" =>
       match value {
-        Number(n) => Number(n - 1.0) // Default decrement by 1
+        Number(n) | Float(n) =>
+          numeric_result(n - 1.0, value is Float(_) || n != n.trunc()) // Default decrement by 1
         String(_) => value
         _ => value
       }
     "times" =>
       match value {
-        Number(n) => Number(n * 2.0) // Default multiply by 2
+        Number(n) | Float(n) =>
+          numeric_result(n * 2.0, value is Float(_) || n != n.trunc()) // Default multiply by 2
         String(_) => value
         _ => value
       }
     "divided_by" =>
       match value {
-        Number(n) => Number(n / 2.0) // Default divide by 2
+        Number(n) | Float(n) =>
+          numeric_result(n / 2.0, value is Float(_) || n != n.trunc()) // Default divide by 2
         String(_) => value
         _ => value
       }
     "modulo" =>
       match value {
-        Number(n) => Number(n % 2.0) // Default modulo 2
+        Number(n) | Float(n) =>
+          numeric_result(n % 2.0, value is Float(_) || n != n.trunc()) // Default modulo 2
         String(_) => value
         _ => value
       }
     "round" =>
       match value {
-        Number(n) => Number(n.round())
+        Number(n) | Float(n) => Number(n.round())
         String(_) => value
         _ => value
       }
     "ceil" =>
       match value {
-        Number(n) => Number(n.ceil())
+        Number(n) | Float(n) => Number(n.ceil())
         String(_) => value
         _ => value
       }
     "floor" =>
       match value {
-        Number(n) => Number(n.floor())
+        Number(n) | Float(n) => Number(n.floor())
         String(_) => value
         _ => value
       }
     "abs" =>
       match value {
-        Number(n) => Number(n.abs())
+        Number(n) | Float(n) =>
+          numeric_result(n.abs(), value is Float(_) || n != n.trunc())
         String(_) => value
         _ => value
       }
@@ -1188,7 +1194,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           for item in arr {
             match item {
               String(s) => if s != "" { selected.push(item) }
-              Number(n) => if n != 0.0 { selected.push(item) }
+              Number(n) | Float(n) => if n != 0.0 { selected.push(item) }
               Bool(b) => if b { selected.push(item) }
               Array(a) => if a.length() > 0 { selected.push(item) }
               Object(_) => selected.push(item)
@@ -1207,7 +1213,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           for item in arr {
             match item {
               String(s) => if s == "" { rejected.push(item) }
-              Number(n) => if n == 0.0 { rejected.push(item) }
+              Number(n) | Float(n) => if n == 0.0 { rejected.push(item) }
               Bool(b) => if !b { rejected.push(item) }
               Array(a) => if a.length() == 0 { rejected.push(item) }
               Null => rejected.push(item)
@@ -1452,25 +1458,25 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       }
     "money" =>
       match value {
-        Number(n) => String("$" + n.to_string())
+        Number(n) | Float(n) => String("$" + n.to_string())
         String(s) => String("$" + s)
         _ => value
       }
     "money_with_currency" =>
       match value {
-        Number(n) => String("$" + n.to_string() + " USD")
+        Number(n) | Float(n) => String("$" + n.to_string() + " USD")
         String(s) => String("$" + s + " USD")
         _ => value
       }
     "money_without_currency" =>
       match value {
-        Number(n) => String(n.to_string())
+        Number(n) | Float(n) => String(n.to_string())
         String(s) => String(s.replace(old="$", new=""))
         _ => value
       }
     "money_without_trailing_zeros" =>
       match value {
-        Number(n) => {
+        Number(n) | Float(n) => {
           let str_val = n.to_string()
           if str_val.strip_suffix(".0") != None {
             String("$" + str_val[0:str_val.length() - 2].to_owned())
@@ -1483,7 +1489,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
       }
     "pluralize" =>
       match value {
-        Number(n) =>
+        Number(n) | Float(n) =>
           // For pluralize, we need parameters: singular and plural forms
           // This is a basic implementation - in practice this would be handled by apply_filter_with_params
           if n == 1.0 {
@@ -1543,6 +1549,12 @@ pub fn string_value(s : String) -> LiquidValue {
 ///|
 pub fn number_value(n : Double) -> LiquidValue {
   Number(n)
+}
+
+///|
+/// Construct an explicitly floating-point number, including integral values like 4.0.
+pub fn float_value(n : Double) -> LiquidValue {
+  Float(n)
 }
 
 ///|

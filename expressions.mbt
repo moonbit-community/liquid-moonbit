@@ -53,7 +53,12 @@ pub fn evaluate_expression(
     "nil" | "null" => Null
     _ =>
       match parse_number(text) {
-        Some(number) => Number(number)
+        Some(number) =>
+          if text.contains(".") {
+            Float(number)
+          } else {
+            Number(number)
+          }
         None => context.get(text).unwrap_or(Null)
       }
   }
@@ -72,7 +77,7 @@ fn values_equal(left : LiquidValue, right : LiquidValue) -> Bool {
   match (left, right) {
     (Null, Null) => true
     (Bool(a), Bool(b)) => a == b
-    (Number(a), Number(b)) => a == b
+    (Number(a) | Float(a), Number(b) | Float(b)) => a == b
     (String(a), String(b)) => a == b
     (Array(a), Array(b)) => {
       if a.length() != b.length() {

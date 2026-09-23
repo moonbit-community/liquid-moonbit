@@ -6342,12 +6342,12 @@ test "numeric precision and edge cases" {
       let result = apply_filter(number_value(num), filter_name)
       // Verify result is still a number (not NaN or error)
       match result {
-        Number(_) => () // Good
+        Number(_) | Float(_) => () // Both numeric representations are valid
         _ =>
           fail(
             "Math filter " +
             filter_name +
-            " should return Number for input " +
+            " should return a numeric value for input " +
             num.to_string(),
           )
       }
