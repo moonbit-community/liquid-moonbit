@@ -293,15 +293,20 @@ fn render_node_inner(
       "" // Assign doesn't produce output
     }
     Comment(_) => "" // Comments don't produce output
-    Cycle(_cycle_name, values) =>
-      // Simple cycle implementation - alternate between values
-      if values.length() > 0 {
-        // For now, just return the first value
-        // In a full implementation, we'd track state and rotate
-        values[0]
-      } else {
-        ""
+    Cycle(group, values) => {
+      if values.is_empty() {
+        return ""
       }
+      let key = if group == "default" {
+        "implicit:" +
+        values.map(fn(v) { v.length().to_string() + ":" + v }).join("")
+      } else {
+        "named:" + unquote_argument(group)
+      }
+      let index = state.cycles.get(key).unwrap_or(0) % values.length()
+      state.cycles[key] = (index + 1) % values.length()
+      values[index]
+    }
     TableRow(loop_var, collection, body, cols) =>
       match context.get(collection) {
         Some(Array(items)) => {
@@ -439,38 +444,24 @@ fn render_node_inner(
       ""
     }
     Raw(raw_content) => raw_content // Raw tag - output content without liquid processing
-    Increment(var_name) => {
-      // Increment tag - increment variable and return current value
-      let current_value = match context.get(var_name) {
-        Some(Number(n)) => n
-        Some(_) => 0.0 // Convert non-numbers to 0
-        None => 0.0 // Start from 0 if variable doesn't exist
-      }
-      let new_value = current_value + 1.0
-      context.set(var_name, number_value(new_value))
-      new_value.to_string()
+    Increment(name) => {
+      let current = state.counters.get(name).unwrap_or(0)
+      state.counters[name] = current + 1
+      current.to_string()
     }
-    Decrement(var_name) => {
-      // Decrement tag - decrement variable and return current value
-      let current_value = match context.get(var_name) {
-        Some(Number(n)) => n
-        Some(_) => 0.0 // Convert non-numbers to 0
-        None => 0.0 // Start from 0 if variable doesn't exist
-      }
-      let new_value = current_value - 1.0
-      context.set(var_name, number_value(new_value))
-      new_value.to_string()
+    Decrement(name) => {
+      let current = state.counters.get(name).unwrap_or(0) - 1
+      state.counters[name] = current
+      current.to_string()
     }
     Echo(var_name, filters) =>
       render_expression(var_name, filters, context, false)
     IfChanged(body) => {
-      // IfChanged tag - only render if content has changed from previous iteration
-      // For now, implement a simple version that always renders
-      // In a full implementation, this would track previous values
-      let mut output = ""
-      for body_node in body {
-        output = output + render_node_inner(body_node, context, state)
+      let output = render_nodes(body, context, state)
+      if state.previous == Some(output) {
+        return ""
       }
+      state.previous = Some(output)
       output
     }
     Layout(layout_name) =>
