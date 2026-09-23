@@ -211,107 +211,11 @@ fn render_node_inner(
     Variable(var_name, filters) =>
       render_expression(var_name, filters, context, true)
     For(loop_var, collection, body, modifiers) =>
-      match context.get(collection) {
-        Some(Array(items)) => {
-          // Apply modifiers to create the actual items to iterate
-          let mut processed_items = items
-
-          // Apply offset
-          match modifiers.offset {
-            Some(offset_count) => {
-              let offset_items : Array[LiquidValue] = []
-              for i in offset_count.max(0)..<processed_items.length() {
-                offset_items.push(processed_items[i])
-              }
-              processed_items = offset_items
-            }
-            None => ()
-          }
-
-          // Apply limit
-          match modifiers.limit {
-            Some(limit_count) => {
-              let limited_items : Array[LiquidValue] = []
-              let max_items = if processed_items.length() > limit_count {
-                limit_count
-              } else {
-                processed_items.length()
-              }
-              for i in 0..<max_items {
-                limited_items.push(processed_items[i])
-              }
-              processed_items = limited_items
-            }
-            None => ()
-          }
-
-          // Apply reversed
-          if modifiers.reversed {
-            let reversed_items : Array[LiquidValue] = []
-            let mut i = processed_items.length() - 1
-            while i >= 0 {
-              reversed_items.push(processed_items[i])
-              i = i - 1
-            }
-            processed_items = reversed_items
-          }
-          let mut output = ""
-          let mut index = 0
-          let saved_item = context.variables.get(loop_var)
-          let saved_loop = context.variables.get("forloop")
-          state.loops += 1
-          for item in processed_items {
-            let loop_context = context
-            loop_context.set(loop_var, item)
-
-            // Set enhanced forloop object properties (based on processed items)
-            let forloop_obj = Map([])
-            forloop_obj.set("index", number_value((index + 1).to_double()))
-            forloop_obj.set("index0", number_value(index.to_double()))
-            forloop_obj.set("first", bool_value(index == 0))
-            forloop_obj.set(
-              "last",
-              bool_value(index == processed_items.length() - 1),
-            )
-            forloop_obj.set(
-              "length",
-              number_value(processed_items.length().to_double()),
-            )
-            forloop_obj.set(
-              "rindex",
-              number_value((processed_items.length() - index).to_double()),
-            )
-            forloop_obj.set(
-              "rindex0",
-              number_value((processed_items.length() - index - 1).to_double()),
-            )
-
-            // Enhanced forloop properties
-            forloop_obj.set("parentloop", saved_loop.unwrap_or(Null)) // Parent loop (for nested loops)
-            forloop_obj.set("name", string_value(collection)) // Collection name
-
-            // Add cycle functionality to forloop
-            let cycle_odd_even = if index % 2 == 0 { "even" } else { "odd" }
-            forloop_obj.set("cycle", string_value(cycle_odd_even))
-            loop_context.set("forloop", object_value(forloop_obj))
-            for body_node in body {
-              output = output +
-                render_node_inner(body_node, loop_context, state)
-            }
-            let flow = state.flow
-            state.flow = Next
-            if flow == Break {
-              break
-            }
-            index = index + 1
-          }
-          state.loops -= 1
-          restore_variable(context, loop_var, saved_item)
-          restore_variable(context, "forloop", saved_loop)
-          output
-        }
-        _ => ""
-      }
+      render_for(loop_var, collection, body, modifiers, [], context, state)
+    ForElse(loop_var, collection, body, modifiers, otherwise) =>
+      render_for(
+        loop_var, collection, body, modifiers, otherwise, context, state,
+      )
     If(condition, then_body, elsif_branches, else_body) => {
       let condition_result = evaluate_condition(condition, context)
       let body_to_render = if condition_result {
