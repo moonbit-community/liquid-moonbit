@@ -378,7 +378,7 @@ test "forloop complete properties" {
     true,
   )
 
-  // Check last item properties  
+  // Check last item properties
   assert_eq(
     result.contains(
       "Item 4 (3) - fourth - First: false Last: true RIndex: 1 RIndex0: 0 Length: 4",
@@ -460,7 +460,7 @@ test "additional edge cases for remaining coverage" {
     _ => fail("Expected Array result")
   }
 
-  // Test slice with string parameter "3" 
+  // Test slice with string parameter "3"
   let filter_slice_3 = filter("slice", ["3"])
   let result_slice_3 = apply_filter_with_params(arr, filter_slice_3)
   match result_slice_3 {
@@ -574,7 +574,7 @@ test "for loop with combined modifiers" {
   let result = render_node(for_test, context)
   // Should: skip first (offset:1), take 2 items (limit:2), then reverse
   // Items after offset: [second, third, fourth, fifth]
-  // Items after limit: [second, third]  
+  // Items after limit: [second, third]
   // Items after reverse: [third, second]
   assert_eq(result, "third second ")
 }
@@ -708,7 +708,7 @@ test "additional edge cases for complete coverage" {
   let strip_tags_result = apply_filter(number_value(123.0), "strip_tags")
   assert_eq(strip_tags_result.to_string(), "123")
 
-  // Test normalize_whitespace with non-string  
+  // Test normalize_whitespace with non-string
   let normalize_result = apply_filter(bool_value(true), "normalize_whitespace")
   assert_eq(normalize_result.to_string(), "true")
 

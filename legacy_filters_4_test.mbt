@@ -100,7 +100,7 @@ test "array filter edge cases" {
   let select_result = apply_filter(mixed_arr, "select")
   assert_eq(select_result.to_string().contains("42"), true) // Should include number
 
-  // Test reject with mixed types  
+  // Test reject with mixed types
   let reject_result = apply_filter(mixed_arr, "reject")
   assert_eq(reject_result.to_string().contains("null"), true) // Should include null
 

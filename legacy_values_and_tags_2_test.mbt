@@ -96,7 +96,7 @@ test "node helper functions" {
   let unless_result = render_node(unless_node_test, context)
   assert_eq(unless_result, "Content") // Should render since test_var is false
 
-  // Test case_node helper  
+  // Test case_node helper
   let case_node_test = case_node("test_var", [], Some([text_node("Default")]))
   let case_result = render_node(case_node_test, context)
   assert_eq(case_result, "Default") // Should use else body
