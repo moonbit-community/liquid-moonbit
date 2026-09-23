@@ -2239,7 +2239,7 @@ test "cycle in template context" {
   )
   let context = LiquidContext::new()
   let result = template.render(context)
-  assert_eq(result, "Row: odd | Next: odd") // Both cycles return first value
+  assert_eq(result, "Row: odd | Next: even") // Both cycles return first value
 }
 
 // TableRow Tag Tests
@@ -4926,47 +4926,22 @@ test "sort_by filter edge cases" {
 
 ///|
 test "increment tag basic functionality" {
-  // Test increment tag functionality
   let context = LiquidContext::new()
-
-  // Test incrementing a non-existent variable (should start from 0)
-  let increment_test = increment_node("counter")
-  let result1 = render_node(increment_test, context)
-  assert_eq(result1, "1") // 0 + 1 = 1
-
-  // Test incrementing again (should be 2)
-  let result2 = render_node(increment_test, context)
-  assert_eq(result2, "2") // 1 + 1 = 2
-
-  // Verify the variable was actually set
-  match context.get("counter") {
-    Some(Number(n)) => assert_eq(n, 2.0)
-    _ => fail("Expected counter to be set to 2")
-  }
+  let node = increment_node("counter")
+  // Standalone render calls have independent registers.
+  assert_eq(render_node(node, context), "0")
+  assert_eq(render_node(node, context), "0")
+  assert_true(context.get("counter") is None)
 }
 
 ///|
 test "decrement tag basic functionality" {
-  // Test decrement tag functionality
   let context = LiquidContext::new()
-
-  // Set initial value
-  context.set("counter", number_value(5.0))
-
-  // Test decrementing
-  let decrement_test = decrement_node("counter")
-  let result1 = render_node(decrement_test, context)
-  assert_eq(result1, "4") // 5 - 1 = 4
-
-  // Test decrementing again
-  let result2 = render_node(decrement_test, context)
-  assert_eq(result2, "3") // 4 - 1 = 3
-
-  // Verify the variable was actually set
-  match context.get("counter") {
-    Some(Number(n)) => assert_eq(n, 3.0)
-    _ => fail("Expected counter to be set to 3")
-  }
+  context.set("counter", number_value(5))
+  let node = decrement_node("counter")
+  assert_eq(render_node(node, context), "-1")
+  assert_eq(render_node(node, context), "-1")
+  assert_eq(context.get("counter").unwrap().to_string(), "5")
 }
 
 ///|
@@ -4975,16 +4950,18 @@ test "increment decrement with non-number values" {
   let context = LiquidContext::new()
   context.set("string_var", string_value("hello"))
 
-  // Test increment with string value (should convert to 0)
+  // Test increment with string value (must not be overwritten)
   let increment_test = increment_node("string_var")
   let result = render_node(increment_test, context)
-  assert_eq(result, "1") // 0 + 1 = 1 (string converted to 0)
+  assert_eq(result, "0")
+  assert_eq(context.get("string_var").unwrap().to_string(), "hello")
 
   // Test decrement with boolean value
   context.set("bool_var", bool_value(true))
   let decrement_test = decrement_node("bool_var")
   let result_dec = render_node(decrement_test, context)
-  assert_eq(result_dec, "-1") // 0 - 1 = -1 (bool converted to 0)
+  assert_eq(result_dec, "-1") // Registers are separate from the boolean variable.
+  assert_eq(context.get("bool_var").unwrap().to_string(), "true")
 }
 
 ///|

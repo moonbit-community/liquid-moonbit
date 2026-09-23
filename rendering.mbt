@@ -10,11 +10,21 @@ priv struct RenderState {
   mut flow : RenderFlow
   mut loops : Int
   mut depth : Int
+  counters : Map[String, Int]
+  cycles : Map[String, Int]
+  mut previous : String?
 }
 
 ///|
 fn new_render_state() -> RenderState {
-  { flow: Next, loops: 0, depth: 0, }
+  {
+    flow: Next,
+    loops: 0,
+    depth: 0,
+    counters: Map([]),
+    cycles: Map([]),
+    previous: None,
+  }
 }
 
 ///|
@@ -74,7 +84,7 @@ fn render_partial(
     }
   }
   let child_state = if isolated {
-    { flow: Next, loops: 0, depth: state.depth + 1, }
+    { ..new_render_state(), depth: state.depth + 1, }
   } else {
     state
   }
