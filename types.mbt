@@ -67,6 +67,13 @@ pub enum LiquidNode {
   Text(String)
   Variable(String, Array[Filter]) // variable_name, filters_with_params
   For(String, String, Array[LiquidNode], ForLoopModifiers) // variable, collection, body, modifiers
+  ForElse(
+    String,
+    String,
+    Array[LiquidNode],
+    ForLoopModifiers,
+    Array[LiquidNode]
+  )
   If(
     String,
     Array[LiquidNode],

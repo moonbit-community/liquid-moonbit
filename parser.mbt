@@ -177,14 +177,32 @@ fn TemplateParser::body(
             }
           }
           "for" | "tablerow" => {
-            let body = self.body(["end" + name]).0
+            let (body, stop) = self.body(
+              if name == "for" {
+                ["else", "endfor"]
+              } else {
+                ["endtablerow"]
+              },
+            )
+            let otherwise = if stop == "else" {
+              Some(self.body(["endfor"]).0)
+            } else {
+              None
+            }
             match find_unquoted(args, " in ") {
               Some(at) => {
                 let variable = args[:at].trim().to_owned()
                 let rest = args[at + 4:].trim().to_owned()
                 if name == "for" {
                   let (collection, modifiers) = parse_for_loop_modifiers(rest)
-                  nodes.push(For(variable, collection, body, modifiers))
+                  match otherwise {
+                    Some(other) =>
+                      nodes.push(
+                        ForElse(variable, collection, body, modifiers, other),
+                      )
+                    None =>
+                      nodes.push(For(variable, collection, body, modifiers))
+                  }
                 } else {
                   let parts = rest.split(" cols:").collect()
                   let cols = if parts.length() == 2 {

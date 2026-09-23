@@ -140,6 +140,7 @@ pub enum LiquidNode {
   Text(String)
   Variable(String, Array[Filter])
   For(String, String, Array[LiquidNode], ForLoopModifiers)
+  ForElse(String, String, Array[LiquidNode], ForLoopModifiers, Array[LiquidNode])
   If(String, Array[LiquidNode], Array[(String, Array[LiquidNode])], Array[LiquidNode]?)
   Unless(String, Array[LiquidNode])
   Case(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?)
