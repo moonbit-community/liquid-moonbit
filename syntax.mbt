@@ -1,4 +1,22 @@
 ///|
+priv struct ParsedFilter {
+  name : String
+  parameters : Array[String]
+}
+
+///|
+priv struct LoopModifiers {
+  limit : Int?
+  offset : Int?
+  reversed : Bool
+}
+
+///|
+fn parsed_filter(name : String, parameters : Array[String]) -> ParsedFilter {
+  { name, parameters, }
+}
+
+///|
 /// Find a delimiter outside single- and double-quoted Liquid strings.
 fn find_unquoted(text : String, delimiter : String) -> Int? {
   let mut quote : UInt16 = 0
@@ -39,30 +57,28 @@ fn split_unquoted(text : String, delimiter : String) -> Array[String] {
 }
 
 ///|
-fn parse_output(expression : String) -> (String, Array[Filter]) {
+fn parse_output(expression : String) -> (String, Array[ParsedFilter]) {
   let parts = split_unquoted(expression, "|")
-  let filters : Array[Filter] = []
+  let filters : Array[ParsedFilter] = []
   for part in parts[1:] {
     match find_unquoted(part, ":") {
       Some(index) =>
         filters.push(
-          filter(
+          parsed_filter(
             part[:index].trim().to_owned(),
             split_unquoted(part[index + 1:].to_owned(), ",").map(fn(p) {
               p.trim().to_owned()
             }),
           ),
         )
-      None => filters.push(filter(part.trim().to_owned(), []))
+      None => filters.push(parsed_filter(part.trim().to_owned(), []))
     }
   }
   (parts[0].trim().to_owned(), filters)
 }
 
 ///|
-fn parse_for_loop_modifiers(
-  collection_str : String,
-) -> (String, ForLoopModifiers) {
+fn parse_for_loop_modifiers(collection_str : String) -> (String, LoopModifiers) {
   let parts = collection_str
     .split(":")
     .map(fn(s) { s.to_owned() })

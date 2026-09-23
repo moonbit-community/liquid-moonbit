@@ -1,46 +1,13 @@
 ///|
+/// Application variables and explicitly registered templates.
+struct LiquidContext {
+  variables : Map[String, LiquidValue]
+  templates : Map[String, String]
+}
+
+///|
 pub fn LiquidContext::new() -> LiquidContext {
-  { variables: Map([]), error_policy: Warn, templates: Map([]), }
-}
-
-///|
-pub fn LiquidContext::with_error_policy(policy : ErrorPolicy) -> LiquidContext {
-  { variables: Map([]), error_policy: policy, templates: Map([]), }
-}
-
-// Helper functions to create error policies
-
-///|
-pub fn strict_policy() -> ErrorPolicy {
-  Strict
-}
-
-///|
-pub fn warn_policy() -> ErrorPolicy {
-  Warn
-}
-
-///|
-pub fn silent_policy() -> ErrorPolicy {
-  Silent
-}
-
-// Handle errors based on error policy
-
-///|
-fn handle_error(context : LiquidContext, message : String) -> String {
-  match context.error_policy {
-    Strict =>
-      // In a full implementation, this would throw an exception
-      // For now, return error message
-      "[ERROR: " + message + "]"
-    Warn => {
-      // Print warning and return empty string
-      println("WARNING: " + message)
-      ""
-    }
-    Silent => "" // Silently ignore errors
-  }
+  { variables: Map([]), templates: Map([]), }
 }
 
 ///|

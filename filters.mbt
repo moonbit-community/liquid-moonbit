@@ -1,7 +1,6 @@
 ///|
-/// Apply a built-in filter to evaluated values. All rendering and compatibility
-/// entry points delegate here; arrays and numeric kinds are never serialized.
-pub fn apply_filter_values(
+/// Apply a built-in filter to evaluated values. Template rendering delegates here; arrays and numeric kinds are never serialized.
+pub fn apply_filter(
   value : LiquidValue,
   name : String,
   parameters : Array[LiquidValue],

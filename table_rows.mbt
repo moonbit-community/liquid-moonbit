@@ -10,9 +10,7 @@ fn render_table_row(
   match collection.eval(context, state) {
     Array(items) => {
       if cols <= 0 {
-        return render_error(
-          context, state, "Table row columns must be positive",
-        )
+        return render_error(state, "Table row columns must be positive")
       }
       let saved_item = context.variables.get(loop_var)
       let saved_loop = context.variables.get("tablerowloop")

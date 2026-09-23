@@ -58,5 +58,3 @@ pub fn object_value(obj : Map[String, LiquidValue]) -> LiquidValue {
 pub fn null_value() -> LiquidValue {
   Null
 }
-
-// Helper functions to create LiquidNode instances for testing

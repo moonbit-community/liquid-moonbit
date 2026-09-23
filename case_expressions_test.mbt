@@ -5,35 +5,53 @@ test "case evaluates typed expressions on both sides" {
   context.set("role", string_value("admin"))
   context.set("expected", string_value("admin"))
   assert_eq(
-    parse("{% case 'admin' %}{% when 'admin' %}yes{% else %}no{% endcase %}").render(
-      context,
-    ),
+    @liquid.compile(
+      "{% case 'admin' %}{% when 'admin' %}yes{% else %}no{% endcase %}",
+    )
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "yes",
   )
   assert_eq(
-    parse("{% case n %}{% when '6' %}string{% when 6 %}number{% endcase %}").render(
-      context,
-    ),
+    @liquid.compile(
+      "{% case n %}{% when '6' %}string{% when 6 %}number{% endcase %}",
+    )
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "number",
   )
   assert_eq(
-    parse("{% case role %}{% when expected %}yes{% endcase %}").render(context),
+    @liquid.compile("{% case role %}{% when expected %}yes{% endcase %}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "yes",
   )
   assert_eq(
-    parse(
+    @liquid.compile(
       "{% case false %}{% when 'false' %}bad{% when true, false %}bool{% endcase %}",
-    ).render(context),
+    )
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "bool",
   )
   assert_eq(
-    parse("{% case nil %}{% when nil %}null{% endcase %}").render(context),
+    @liquid.compile("{% case nil %}{% when nil %}null{% endcase %}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "null",
   )
   assert_eq(
-    parse(
+    @liquid.compile(
       "{% case 'x,y or z' %}{% when 'other' or 'x,y or z' %}quoted{% endcase %}",
-    ).render(context),
+    )
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "quoted",
   )
 }

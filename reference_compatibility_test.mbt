@@ -6,7 +6,6 @@ test "reference: literal and typed equality" {
   let source = "{% if 6 == '6' %}bad{% else %}typed{% endif %}"
   let expected = "typed"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -15,7 +14,6 @@ test "reference: right associative conditions" {
   let source = "{% if true or false and false %}yes{% else %}no{% endif %}"
   let expected = "yes"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -24,7 +22,6 @@ test "reference: quoted filter delimiters" {
   let source = "{{ 'a,b:c|d' | replace: 'a,b:c|d', 'ok' }}"
   let expected = "ok"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -33,7 +30,6 @@ test "reference: loop modifiers" {
   let source = "{% assign items = 'a,b,c,d,e,f,g,h' | split: ',' %}{% for x in items reversed offset:6 limit:2 %}{{ x }}{% endfor %}"
   let expected = "hg"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -42,7 +38,6 @@ test "reference: empty loop fallback" {
   let source = "{% assign items = '' | split: ',' %}{% for x in items %}bad{% else %}empty{% endfor %}"
   let expected = "empty"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -51,7 +46,6 @@ test "reference: typed case branches" {
   let source = "{% case 6 %}{% when '6' %}bad{% when 6 %}number{% endcase %}"
   let expected = "number"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -60,7 +54,6 @@ test "reference: case variable choice" {
   let source = "{% assign expected = 'admin' %}{% case 'admin' %}{% when expected %}yes{% endcase %}"
   let expected = "yes"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -69,7 +62,6 @@ test "reference: cycle state" {
   let source = "{% assign xs = 'a,b,c' | split: ',' %}{% for x in xs %}{% cycle 'odd', 'even' %},{% endfor %}"
   let expected = "odd,even,odd,"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -78,7 +70,6 @@ test "reference: ifchanged state" {
   let source = "{% assign xs = 'a,a,b,a' | split: ',' %}{% for x in xs %}{% ifchanged %}{{ x }}{% endifchanged %}{% endfor %}"
   let expected = "aba"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -87,7 +78,6 @@ test "reference: counter isolation" {
   let source = "{% assign x = 10 %}{% increment x %}|{% increment x %}|{% decrement x %}|{{ x }}"
   let expected = "0|1|1|10"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -96,7 +86,6 @@ test "reference: array concatenation" {
   let source = "{% assign a = 'a,b' | split: ',' %}{% assign b = 'c,d' | split: ',' %}{{ a | concat: b | join: '-' }}"
   let expected = "a-b-c-d"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -105,7 +94,6 @@ test "reference: assigned float divisor" {
   let source = "{% assign d = 4.0 %}{{ 10 | divided_by: d }}"
   let expected = "2.5"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -114,7 +102,6 @@ test "reference: float filter chain" {
   let source = "{% assign d = 2.0 | times: 2 %}{{ 10 | divided_by: d }}"
   let expected = "2.5"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -123,7 +110,6 @@ test "reference: negative integer division" {
   let source = "{{ -10 | divided_by: 4 }}"
   let expected = "-3"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -132,7 +118,6 @@ test "reference: unicode slicing" {
   let source = "{{ 'a😀中bc' | slice: 1, 2 }}"
   let expected = "😀中"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -141,7 +126,6 @@ test "reference: negative slice" {
   let source = "{{ 'abcdefghij' | slice: -3, 2 }}"
   let expected = "hi"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -150,7 +134,6 @@ test "reference: truncate suffix budget" {
   let source = "{{ 'abcdefghij' | truncate: 4 }}|{{ 'abcdefghij' | truncate: 6, '--' }}"
   let expected = "a...|abcd--"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -159,7 +142,6 @@ test "reference: default false option" {
   let source = "{{ false | default: 'fallback', allow_false: true }}"
   let expected = "false"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -168,7 +150,6 @@ test "reference: nested control flow" {
   let source = "{% assign xs = 'a,b,c' | split: ',' %}{% for x in xs %}{% if x == 'b' %}{% continue %}{% endif %}{{ x }}{% endfor %}"
   let expected = "ac"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }
 
 ///|
@@ -177,5 +158,4 @@ test "reference: whitespace control" {
   let source = "a \n {{- 'b' -}} \n c"
   let expected = "abc"
   assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-  assert_eq(parse(source).render(LiquidContext::new()), expected)
 }

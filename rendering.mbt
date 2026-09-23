@@ -13,7 +13,7 @@ priv struct RenderState {
   counters : Map[String, Int]
   cycles : Map[String, Int]
   mut previous : String?
-  mut diagnostics : Array[Diagnostic]?
+  diagnostics : Array[Diagnostic]
   mut template_name : String?
   partials : Map[String, Array[RenderNode]]
 }
@@ -27,7 +27,7 @@ fn new_render_state() -> RenderState {
     counters: Map([]),
     cycles: Map([]),
     previous: None,
-    diagnostics: None,
+    diagnostics: [],
     template_name: None,
     partials: Map([]),
   }
@@ -65,7 +65,6 @@ fn render_partial(
   let name = call.name
   guard context.templates.get(name) is Some(source) else {
     return render_error(
-      context,
       state,
       "Template '" + name + "' not found",
       code="missing_template",
@@ -73,18 +72,13 @@ fn render_partial(
   }
   if state.depth >= 64 {
     return render_error(
-      context,
       state,
       "Template nesting limit exceeded",
       code="nesting_limit",
     )
   }
   let child = if isolated {
-    {
-      variables: Map([]),
-      error_policy: context.error_policy,
-      templates: context.templates,
-    }
+    { variables: Map([]), templates: context.templates, }
   } else {
     context
   }
@@ -118,13 +112,10 @@ fn render_partial(
     Some(nodes) => nodes
     None => {
       let diagnostics : Array[Diagnostic] = []
-      let parsed = parse_template(source, diagnostics~)
-      if state.diagnostics is Some(errors) {
-        for diagnostic in diagnostics {
-          errors.push({ ..diagnostic, template: Some(name), })
-        }
+      let nodes = parse_template(source, diagnostics~)
+      for diagnostic in diagnostics {
+        state.diagnostics.push({ ..diagnostic, template: Some(name), })
       }
-      let nodes = compile_nodes(parsed)
       state.partials[source] = nodes
       nodes
     }
@@ -161,7 +152,7 @@ fn render_for(
   loop_var : String,
   collection : Expr,
   body : Array[RenderNode],
-  modifiers : ForLoopModifiers,
+  modifiers : LoopModifiers,
   otherwise : Array[RenderNode],
   context : LiquidContext,
   state : RenderState,
@@ -273,25 +264,15 @@ fn render_for(
 
 ///|
 fn render_error(
-  context : LiquidContext,
   state : RenderState,
   message : String,
   code? : String = "evaluation_error",
 ) -> String {
-  report_diagnostic(context, state, filter_diagnostic(code, message))
+  report_diagnostic(state, filter_diagnostic(code, message))
 }
 
 ///|
-fn report_diagnostic(
-  context : LiquidContext,
-  state : RenderState,
-  diagnostic : Diagnostic,
-) -> String {
-  match state.diagnostics {
-    Some(errors) => {
-      errors.push({ ..diagnostic, template: state.template_name, })
-      ""
-    }
-    None => handle_error(context, diagnostic.message)
-  }
+fn report_diagnostic(state : RenderState, diagnostic : Diagnostic) -> String {
+  state.diagnostics.push({ ..diagnostic, template: state.template_name, })
+  ""
 }

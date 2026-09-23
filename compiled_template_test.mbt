@@ -2,12 +2,12 @@
 test "compiled templates reuse expressions with fresh contexts and registers" {
   let source = "{% assign d = 2.0 | times: 2 %}{% if person.active and count >= 2 %}{{ count | divided_by: d }}{% else %}no{% endif %}|{% increment x %}"
   let template = @liquid.compile(source).unwrap()
-  for count in [2, 10, 1] {
+  for (count, expected) in [(2, "0.5|0"), (10, "2.5|0"), (1, "no|0")] {
     let context = LiquidContext::new()
     context.set("count", number_value(count.to_double()))
     context.set("person", object_value(Map([("active", bool_value(true))])))
-    assert_eq(template.render(context).unwrap(), parse(source).render(context))
-    assert_eq(template.render(context).unwrap(), parse(source).render(context))
+    assert_eq(template.render(context).unwrap(), expected)
+    assert_eq(template.render(context).unwrap(), expected)
   }
 }
 
@@ -51,7 +51,7 @@ test "checked parsing reports malformed blocks and exact opening offsets" {
 
 ///|
 test "checked rendering returns diagnostics rather than error text" {
-  let context = LiquidContext::with_error_policy(silent_policy())
+  let context = LiquidContext::new()
   for
     source in [
       "{{ missing }}", "{{ 1 | unknown }}", "{{ 1 | concat: 2 }}", "{% include 'missing' %}",

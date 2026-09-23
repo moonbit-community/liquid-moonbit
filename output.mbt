@@ -10,7 +10,6 @@ fn render_expression(
     Null =>
       if report_missing && expression.missing(context) {
         render_error(
-          context,
           state,
           "Variable '" + expression.label() + "' not found",
           code="missing_variable",

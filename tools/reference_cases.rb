@@ -44,7 +44,6 @@ cases.each do |name, template|
       let source = #{JSON.generate(template)}
       let expected = #{JSON.generate(expected)}
       assert_eq(@liquid.compile(source).unwrap().render(context).unwrap(), expected)
-      assert_eq(parse(source).render(LiquidContext::new()), expected)
     }
   MBT
 end

@@ -6,11 +6,17 @@ test "quoted delimiters in output and echo filters" {
     for quote in ["'", "\""] {
       let expression = "items | join: " + quote + separator + quote
       assert_eq(
-        parse("{{ " + expression + " }}").render(context),
+        @liquid.compile("{{ " + expression + " }}")
+        .unwrap()
+        .render(context)
+        .unwrap(),
         "a" + separator + "b",
       )
       assert_eq(
-        parse("{% echo " + expression + " %}").render(context),
+        @liquid.compile("{% echo " + expression + " %}")
+        .unwrap()
+        .render(context)
+        .unwrap(),
         "a" + separator + "b",
       )
     }
@@ -20,12 +26,27 @@ test "quoted delimiters in output and echo filters" {
 ///|
 test "quoted tag closers and assignment equals are literal content" {
   let context = LiquidContext::new()
-  assert_eq(parse("{% assign x = 'a=b%}c' %}{{ x }}").render(context), "a=b%}c")
+  assert_eq(
+    @liquid.compile("{% assign x = 'a=b%}c' %}{{ x }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
+    "a=b%}c",
+  )
   context.set("items", array_value([string_value("a"), string_value("b")]))
-  assert_eq(parse("{{ items | join: '}}' }}").render(context), "a}}b")
+  assert_eq(
+    @liquid.compile("{{ items | join: '}}' }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
+    "a}}b",
+  )
   context.set("text", string_value("a,b:c|d"))
   assert_eq(
-    parse("{{ text | replace: 'a,b:c|d', 'ok' | upcase }}").render(context),
+    @liquid.compile("{{ text | replace: 'a,b:c|d', 'ok' | upcase }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "OK",
   )
 }

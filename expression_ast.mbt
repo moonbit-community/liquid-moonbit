@@ -47,7 +47,7 @@ fn compile_expression(source : String) -> Expr {
 }
 
 ///|
-fn compile_filter(filter : Filter) -> FilterCall {
+fn compile_filter(filter : ParsedFilter) -> FilterCall {
   {
     name: filter.name,
     arguments: filter.parameters.map(fn(parameter) {
@@ -64,7 +64,7 @@ fn compile_filter(filter : Filter) -> FilterCall {
 }
 
 ///|
-fn compile_output(source : String, filters : Array[Filter]) -> Expr {
+fn compile_output(source : String, filters : Array[ParsedFilter]) -> Expr {
   let expression = compile_expression(source)
   if filters.is_empty() {
     expression
@@ -94,11 +94,9 @@ fn Expr::eval(
             None => arguments.push(argument)
           }
         }
-        value = match
-          apply_filter_values(value, filter.name, arguments, options~) {
+        value = match apply_filter(value, filter.name, arguments, options~) {
           Ok(result) => result
-          Err(diagnostic) =>
-            String(report_diagnostic(context, state, diagnostic))
+          Err(diagnostic) => String(report_diagnostic(state, diagnostic))
         }
       }
       value

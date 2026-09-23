@@ -2,44 +2,68 @@
 test "output and echo evaluate literals and filters" {
   let context = LiquidContext::new()
   assert_eq(
-    parse("{{ 'hello' | upcase }}{% echo 42 %}{{ true }}{{ nil }}").render(
-      context,
-    ),
+    @liquid.compile("{{ 'hello' | upcase }}{% echo 42 %}{{ true }}{{ nil }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "HELLO42true",
   )
   assert_eq(
-    parse("{% assign x = 'hello' | upcase %}{{ x }}").render(context),
+    @liquid.compile("{% assign x = 'hello' | upcase %}{{ x }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "HELLO",
   )
 }
 
 ///|
 test "default receives missing values and resolves arguments" {
-  let context = LiquidContext::with_error_policy(strict_policy())
+  let context = LiquidContext::new()
   context.set("fallback", string_value("Guest"))
   context.set("blank", string_value(""))
   context.set("empty_items", array_value([]))
   for input in ["missing", "nil", "false", "blank", "empty_items"] {
     assert_eq(
-      parse("{{ " + input + " | default: fallback | upcase }}").render(context),
+      @liquid.compile("{{ " + input + " | default: fallback | upcase }}")
+      .unwrap()
+      .render(context)
+      .unwrap(),
       "GUEST",
     )
     assert_eq(
-      parse("{% echo " + input + " | default: 'Guest' %}").render(context),
+      @liquid.compile("{% echo " + input + " | default: 'Guest' %}")
+      .unwrap()
+      .render(context)
+      .unwrap(),
       "Guest",
     )
   }
   assert_eq(
-    parse("{{ false | default: 'Guest', allow_false: true }}").render(context),
+    @liquid.compile("{{ false | default: 'Guest', allow_false: true }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "false",
   )
-  assert_eq(parse("{{ 0 | default: 'Guest' }}").render(context), "0")
+  assert_eq(
+    @liquid.compile("{{ 0 | default: 'Guest' }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
+    "0",
+  )
   context.set("separator", string_value(" / "))
   context.set("items", array_value([string_value("a"), string_value("b")]))
-  assert_eq(parse("{{ items | join: separator }}").render(context), "a / b")
   assert_eq(
-    parse("{{ missing }}").render(context),
-    "[ERROR: Variable 'missing' not found]",
+    @liquid.compile("{{ items | join: separator }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
+    "a / b",
+  )
+  assert_true(
+    @liquid.compile("{{ missing }}").unwrap().render(context) is Err(_),
   )
 }
 
@@ -50,11 +74,17 @@ test "string filter arguments use either quote style and context values" {
   context.set("old", string_value("a,b:c|d"))
   context.set("replacement", string_value("it's \"done\""))
   assert_eq(
-    parse("{{ text | replace: old, replacement }}").render(context),
+    @liquid.compile("{{ text | replace: old, replacement }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "it's \"done\"",
   )
   assert_eq(
-    parse("{{ text | replace: \"a,b:c|d\", \"ok\" }}").render(context),
+    @liquid.compile("{{ text | replace: \"a,b:c|d\", \"ok\" }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "ok",
   )
 }

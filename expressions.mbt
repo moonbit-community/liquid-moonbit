@@ -30,14 +30,6 @@ fn parse_number(text : String) -> Double? {
 }
 
 ///|
-pub fn evaluate_expression(
-  expression : String,
-  context : LiquidContext,
-) -> LiquidValue {
-  compile_expression(expression).eval(context, new_render_state())
-}
-
-///|
 fn is_truthy(value : LiquidValue) -> Bool {
   match value {
     Null | Bool(false) => false
@@ -75,11 +67,6 @@ fn values_equal(left : LiquidValue, right : LiquidValue) -> Bool {
       })
     _ => false
   }
-}
-
-///|
-pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
-  compile_condition(condition).eval(context, new_render_state())
 }
 
 ///|
