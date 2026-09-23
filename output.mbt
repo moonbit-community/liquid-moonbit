@@ -40,6 +40,21 @@ fn apply_context_filters(
   for filter_obj in filters {
     if filter_obj.name == "default" {
       value = default_value(value, filter_obj.parameters, context)
+    } else if filter_obj.name == "concat" {
+      let other = match filter_obj.parameters.get(0) {
+        Some(expression) => evaluate_expression(expression, context)
+        None => Null
+      }
+      value = match (value, other) {
+        (Array(left), Array(right)) => {
+          let combined = left.copy()
+          for item in right {
+            combined.push(item)
+          }
+          Array(combined)
+        }
+        _ => String(handle_error(context, "concat requires two arrays"))
+      }
     } else {
       let parameters = filter_obj.parameters.map(fn(param) {
         let text = param.trim().to_owned()
