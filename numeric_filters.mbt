@@ -11,18 +11,6 @@ fn unquote_argument(text : String) -> String {
 }
 
 ///|
-fn numeric_filter(
-  value : LiquidValue,
-  name : String,
-  parameters : Array[String],
-) -> LiquidValue {
-  if parameters.is_empty() {
-    return apply_filter(value, name)
-  }
-  typed_numeric_filter(value, name, String(unquote_argument(parameters[0])))
-}
-
-///|
 fn numeric_parts(value : LiquidValue) -> (Double, Bool)? {
   match value {
     Number(n) => Some((n, n != n.trunc()))

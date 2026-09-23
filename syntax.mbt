@@ -58,3 +58,43 @@ fn parse_output(expression : String) -> (String, Array[Filter]) {
   }
   (parts[0].trim().to_owned(), filters)
 }
+
+///|
+fn parse_for_loop_modifiers(
+  collection_str : String,
+) -> (String, ForLoopModifiers) {
+  let parts = collection_str
+    .split(":")
+    .map(fn(s) { s.to_owned() })
+    .collect()
+    .join(" : ")
+    .split(" ")
+    .flat_map(fn(part) { part.split("\t") })
+    .filter(fn(part) { !part.is_empty() })
+    .collect()
+  let collection = parts[0].to_owned()
+  let mut limit : Int? = None
+  let mut offset : Int? = None
+  let mut reversed = false
+  let mut i = 1
+  while i < parts.length() {
+    let part = parts[i]
+    if (part == "limit" || part == "offset") &&
+      i + 2 < parts.length() &&
+      parts[i + 1] == ":" {
+      let count = parse_integer(parts[i + 2].to_owned())
+      if part == "limit" {
+        limit = count
+      } else {
+        offset = count
+      }
+      i += 3
+    } else {
+      if part == "reversed" {
+        reversed = true
+      }
+      i += 1
+    }
+  }
+  (collection, { limit, offset, reversed, })
+}

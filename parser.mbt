@@ -1,8 +1,8 @@
 ///|
 priv enum TemplateToken {
   Text(String)
-  Output(String)
-  Tag(String)
+  Output(String, Int)
+  Tag(String, Int)
   Verbatim(String, String)
 }
 
@@ -36,7 +36,10 @@ fn skip_space(source : String, start : Int) -> Int {
 }
 
 ///|
-fn tokenize_template(source : String) -> Array[TemplateToken] {
+fn tokenize_template(
+  source : String,
+  diagnostics : Array[Diagnostic],
+) -> Array[TemplateToken] {
   let tokens : Array[TemplateToken] = []
   let mut pos = 0
   while pos < source.length() {
@@ -54,6 +57,9 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
     let closing = if output { "}}" } else { "%}" }
     guard find_unquoted(source[start + 2:].to_owned(), closing)
       is Some(end_offset) else {
+      diagnostics.push(
+        parse_diagnostic("unclosed_tag", "Expected " + closing, start),
+      )
       tokens.push(Text(rest))
       break
     }
@@ -70,7 +76,7 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
     let tag = if from <= to { source[from:to].trim().to_owned() } else { "" }
     pos = if right { skip_space(source, end + 2) } else { end + 2 }
     if output {
-      tokens.push(Output(tag))
+      tokens.push(Output(tag, start))
       continue
     }
     let (name, _) = tag_parts(tag)
@@ -106,11 +112,14 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
         search = candidate + 2
       }
       if !found {
+        diagnostics.push(
+          parse_diagnostic("unclosed_block", "Expected end" + name, start),
+        )
         tokens.push(Verbatim(name, source[body_start:].to_owned()))
         pos = source.length()
       }
     } else {
-      tokens.push(Tag(tag))
+      tokens.push(Tag(tag, start))
     }
   }
   tokens
@@ -120,6 +129,8 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
 priv struct TemplateParser {
   tokens : Array[TemplateToken]
   mut pos : Int
+  diagnostics : Array[Diagnostic]
+  end_offset : Int
 }
 
 ///|
@@ -133,7 +144,14 @@ fn TemplateParser::body(
     self.pos += 1
     match token {
       Text(text) => nodes.push(Text(text))
-      Output(expression) => {
+      Output(expression, at) => {
+        if expression.is_empty() {
+          self.diagnostics.push(
+            parse_diagnostic(
+              "empty_expression", "Expected an output expression", at,
+            ),
+          )
+        }
         let (value, filters) = parse_output(expression)
         nodes.push(Variable(value, filters))
       }
@@ -145,10 +163,23 @@ fn TemplateParser::body(
             _ => Comment(text)
           },
         )
-      Tag(tag) => {
+      Tag(tag, at) => {
         let (name, args) = tag_parts(tag)
         if stops.contains(name) {
           return (nodes, tag)
+        }
+        if args.is_empty() &&
+          [
+            "if", "unless", "case", "assign", "for", "tablerow", "capture", "increment",
+            "decrement", "include", "render", "echo",
+          ].contains(name) {
+          self.diagnostics.push(
+            parse_diagnostic(
+              "missing_argument",
+              "Expected an argument for " + name,
+              at,
+            ),
+          )
         }
         match name {
           "if" | "unless" => {
@@ -221,7 +252,16 @@ fn TemplateParser::body(
                   )
                 }
               }
-              None => nodes.push(Comment(tag))
+              None => {
+                self.diagnostics.push(
+                  parse_diagnostic(
+                    "invalid_tag",
+                    "Invalid " + name + " syntax",
+                    at,
+                  ),
+                )
+                nodes.push(Comment(tag))
+              }
             }
           }
           "case" => {
@@ -256,7 +296,13 @@ fn TemplateParser::body(
                 .split("\n")
                 .map(fn(line) { "{% " + line.trim().to_owned() + " %}" })
                 .collect()
-              nodes.push(Liquid(parse_template(lines.join(""))))
+              let nested : Array[Diagnostic] = []
+              nodes.push(
+                Liquid(parse_template(lines.join(""), diagnostics=nested)),
+              )
+              for diagnostic in nested {
+                self.diagnostics.push({ ..diagnostic, offset: Some(at), })
+              }
             }
           "assign" =>
             match find_unquoted(args, "=") {
@@ -267,7 +313,16 @@ fn TemplateParser::body(
                     args[at + 1:].trim().to_owned(),
                   ),
                 )
-              None => nodes.push(Comment(tag))
+              None => {
+                self.diagnostics.push(
+                  parse_diagnostic(
+                    "invalid_tag",
+                    "Invalid " + name + " syntax",
+                    at,
+                  ),
+                )
+                nodes.push(Comment(tag))
+              }
             }
           "echo" => {
             let (value, filters) = parse_output(args)
@@ -297,16 +352,42 @@ fn TemplateParser::body(
               ),
             )
           }
-          _ => nodes.push(Comment(tag))
+          _ => {
+            self.diagnostics.push(
+              parse_diagnostic(
+                "unknown_tag",
+                "Unknown or misplaced tag '" + name + "'",
+                at,
+              ),
+            )
+            nodes.push(Comment(tag))
+          }
         }
       }
     }
+  }
+  if !stops.is_empty() {
+    self.diagnostics.push(
+      parse_diagnostic(
+        "unclosed_block",
+        "Expected " + stops[stops.length() - 1],
+        self.end_offset,
+      ),
+    )
   }
   (nodes, "")
 }
 
 ///|
-fn parse_template(source : String) -> Array[LiquidNode] {
-  let parser : TemplateParser = { tokens: tokenize_template(source), pos: 0, }
+fn parse_template(
+  source : String,
+  diagnostics? : Array[Diagnostic] = [],
+) -> Array[LiquidNode] {
+  let parser : TemplateParser = {
+    tokens: tokenize_template(source, diagnostics),
+    pos: 0,
+    diagnostics,
+    end_offset: source.length(),
+  }
   parser.body([]).0
 }

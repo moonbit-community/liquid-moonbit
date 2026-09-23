@@ -13,6 +13,9 @@ priv struct RenderState {
   counters : Map[String, Int]
   cycles : Map[String, Int]
   mut previous : String?
+  mut diagnostics : Array[Diagnostic]?
+  mut template_name : String?
+  partials : Map[String, Array[RenderNode]]
 }
 
 ///|
@@ -24,6 +27,9 @@ fn new_render_state() -> RenderState {
     counters: Map([]),
     cycles: Map([]),
     previous: None,
+    diagnostics: None,
+    template_name: None,
+    partials: Map([]),
   }
 }
 
@@ -51,18 +57,27 @@ pub fn LiquidContext::register_template(
 
 ///|
 fn render_partial(
-  expression : String,
+  call : PartialCall,
   context : LiquidContext,
   state : RenderState,
   isolated : Bool,
 ) -> String {
-  let args = split_unquoted(expression, ",")
-  let name = unquote_argument(args[0])
+  let name = call.name
   guard context.templates.get(name) is Some(source) else {
-    return handle_error(context, "Template '" + name + "' not found")
+    return render_error(
+      context,
+      state,
+      "Template '" + name + "' not found",
+      code="missing_template",
+    )
   }
   if state.depth >= 64 {
-    return handle_error(context, "Template nesting limit exceeded")
+    return render_error(
+      context,
+      state,
+      "Template nesting limit exceeded",
+      code="nesting_limit",
+    )
   }
   let child = if isolated {
     {
@@ -74,28 +89,51 @@ fn render_partial(
     context
   }
   let saved : Map[String, LiquidValue?] = Map([])
-  for arg in args[1:] {
-    if find_unquoted(arg, ":") is Some(at) {
-      let key = arg[:at].trim().to_owned()
-      if !saved.contains(key) {
-        saved[key] = child.variables.get(key)
-      }
-      child.set(key, evaluate_expression(arg[at + 1:].to_owned(), context))
+  // Evaluate all arguments in the caller before binding any of them.
+  let arguments = call.arguments.map(fn(arg) {
+    (arg.0, arg.1.eval(context, state))
+  })
+  for (key, value) in arguments {
+    if !saved.contains(key) {
+      saved[key] = child.variables.get(key)
     }
+    child.set(key, value)
   }
   let child_state = if isolated {
-    { ..new_render_state(), depth: state.depth + 1, }
+    {
+      ..new_render_state(),
+      depth: state.depth + 1,
+      diagnostics: state.diagnostics,
+      partials: state.partials,
+    }
   } else {
     state
   }
   if !isolated {
     state.depth += 1
   }
-  let template = parse(source)
+  let previous_template = child_state.template_name
+  child_state.template_name = Some(name)
+  let nodes = match state.partials.get(source) {
+    Some(nodes) => nodes
+    None => {
+      let diagnostics : Array[Diagnostic] = []
+      let parsed = parse_template(source, diagnostics~)
+      if state.diagnostics is Some(errors) {
+        for diagnostic in diagnostics {
+          errors.push({ ..diagnostic, template: Some(name), })
+        }
+      }
+      let nodes = compile_nodes(parsed)
+      state.partials[source] = nodes
+      nodes
+    }
+  }
   let mut output = ""
-  for node in template.nodes {
+  for node in nodes {
     output += render_node_inner(node, child, child_state)
   }
+  child_state.template_name = previous_template
   if !isolated {
     state.depth -= 1
   }
@@ -107,7 +145,7 @@ fn render_partial(
 
 ///|
 fn render_nodes(
-  nodes : Array[LiquidNode],
+  nodes : Array[RenderNode],
   context : LiquidContext,
   state : RenderState,
 ) -> String {
@@ -121,15 +159,15 @@ fn render_nodes(
 ///|
 fn render_for(
   loop_var : String,
-  collection : String,
-  body : Array[LiquidNode],
+  collection : Expr,
+  body : Array[RenderNode],
   modifiers : ForLoopModifiers,
-  otherwise : Array[LiquidNode],
+  otherwise : Array[RenderNode],
   context : LiquidContext,
   state : RenderState,
 ) -> String {
-  match context.get(collection) {
-    Some(Array(items)) => {
+  match collection.eval(context, state) {
+    Array(items) => {
       // Apply modifiers to create the actual items to iterate
       let mut processed_items = items
 
@@ -208,7 +246,7 @@ fn render_for(
 
         // Enhanced forloop properties
         forloop_obj.set("parentloop", saved_loop.unwrap_or(Null)) // Parent loop (for nested loops)
-        forloop_obj.set("name", string_value(collection)) // Collection name
+        forloop_obj.set("name", string_value(collection.label())) // Collection name
 
         // Add cycle functionality to forloop
         let cycle_odd_even = if index % 2 == 0 { "even" } else { "odd" }
@@ -230,5 +268,30 @@ fn render_for(
       output
     }
     _ => render_nodes(otherwise, context, state)
+  }
+}
+
+///|
+fn render_error(
+  context : LiquidContext,
+  state : RenderState,
+  message : String,
+  code? : String = "evaluation_error",
+) -> String {
+  report_diagnostic(context, state, filter_diagnostic(code, message))
+}
+
+///|
+fn report_diagnostic(
+  context : LiquidContext,
+  state : RenderState,
+  diagnostic : Diagnostic,
+) -> String {
+  match state.diagnostics {
+    Some(errors) => {
+      errors.push({ ..diagnostic, template: state.template_name, })
+      ""
+    }
+    None => handle_error(context, diagnostic.message)
   }
 }

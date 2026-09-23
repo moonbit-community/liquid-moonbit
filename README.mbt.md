@@ -4,26 +4,30 @@ A Liquid templating language implementation in MoonBit, inspired by [Shopify's L
 
 ## Overview
 
-Liquid MoonBit is a safe, customer-facing template language for flexible web apps. It provides a simple syntax for dynamic content generation with built-in security features and extensible filter system.
+Liquid MoonBit is a template interpreter with parsed block structure, typed
+expression evaluation, and explicit template registration. It implements a
+subset of Liquid plus legacy extension filters; full Liquid compatibility and
+resource-bounded execution are not guaranteed.
 
-## Features
+For new integrations, use the opaque compiled-template interface:
 
-### Core Functionality
-- ✅ **Variable Output**: `{{ variable }}` and `{% echo variable %}` with unlimited nesting
-- ✅ **Advanced Filters**: 50+ filters with comprehensive parameter support
-- ✅ **String Manipulation**: upcase, downcase, capitalize, strip, lstrip, rstrip, replace, remove, split, etc.
-- ✅ **Array Operations**: push, pop, shift, unshift, concat, at, map, sort_by, etc.
-- ✅ **Template Context**: Variable binding and evaluation with deep object access
-- ✅ **Control Flow**: if/elsif/else, for loops with modifiers, case/when statements, unless
-- ✅ **Variable Management**: assign, capture, increment, decrement, ifchanged
-- ✅ **Template Composition**: includes, renders, captures, sections, layouts
-- ✅ **Advanced Features**: Filter parameters, forloop objects, error policies, whitespace control
+```mbt check
+///|
+test "compiled template quick start" {
+  let template = @liquid.compile("Hello, {{ name }}!").unwrap()
+  let context = @liquid.LiquidContext::new()
+  context.set("name", @liquid.string_value("World"))
+  assert_eq(template.render(context).unwrap(), "Hello, World!")
+}
+```
 
-### Language Features
-- **Safe**: Templates can't execute arbitrary code
-- **Fast**: Compiled to efficient MoonBit bytecode
-- **Extensible**: Custom filters and functions
-- **Familiar**: Compatible with Liquid syntax
+Both compilation and rendering return structured diagnostics on failure.
+Rendering through this interface does not print errors or embed them in output.
+A compiled template can be reused with different contexts.
+
+See [architecture and compatibility](ARCHITECTURE.md) for module responsibilities,
+error behavior, the typed filter interface, and migration notes.
+The examples below demonstrate the retained legacy interface.
 
 ## Quick Start
 
@@ -574,85 +578,23 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Built with [MoonBit](https://www.moonbitlang.com/)
 - Original Liquid ML implementation: [liquid-ml](https://github.com/benfaerber/liquid-ml)
 
-## Status
+## Validation and implementation status
 
-🎊 **Enterprise Production Ready!** This implementation **exceeds liquid-ml feature parity** with **357 comprehensive tests**. All advanced features including enhanced filter parameters, for loop modifiers, variable management, control flow execution, template composition, and robust error handling are fully implemented.
+Run the compiler and test suite with:
 
-### Completed Features
+```sh
+moon check --target all --deny-warn --warn-list +25+73
+moon test --target all
+```
 
-#### **Core Template Engine**
-- ✅ Complete template parsing (`{{ }}`, `{% %}`, and `{% echo %}` syntax)
-- ✅ Advanced filter library (50+ filters with comprehensive parameter support)
-- ✅ Enhanced filter parameters (truncate: 50, join: ', ', slice: 1, 3, pluralize: 'item', 'items')
-- ✅ All comparison operators (==, !=, <, >, <=, >=, contains) for numbers and strings
-- ✅ All logical operators (and, or, not) with complex expressions
-- ✅ Complete control flow (if/elsif/else, for with modifiers, case/when, unless)
+Tests include legacy compatibility cases, end-to-end parse/render regressions,
+checked compilation and rendering, and a bounded reference corpus generated
+against Shopify Liquid 5.4.0. The reference corpus runs as ordinary MoonBit tests;
+Ruby is needed only to regenerate or independently verify its expected outputs.
 
-#### **Advanced Tags & Features**
-- ✅ Variable management tags (increment, decrement, echo, ifchanged)
-- ✅ Enhanced for loops (limit, offset, reversed modifiers)
-- ✅ Advanced tags (capture, raw, liquid, section, style, tablerow, cycle)
-- ✅ Template composition (include, render)
-- ✅ Object property access with unlimited nesting
-- ✅ Forloop and tablerowloop objects with all properties
-- ✅ Error handling policies (strict, warn, silent)
-- ✅ Loop control (break, continue)
-- ✅ Content capture and raw processing
-- ✅ Whitespace control foundation ({{- -}}, {%- -%} parsing)
+See [ARCHITECTURE.md](ARCHITECTURE.md) for retained extensions and current
+limitations. Passing these tests does not establish complete Liquid compatibility.
 
-#### **Enhanced Filter System**
-- ✅ **String processing**: Advanced trimming (lstrip, rstrip), text analysis (reading_time)
-- ✅ **Array operations**: Element access (at), manipulation (push, pop, shift, unshift)
-- ✅ **Smart filtering**: Property-based sorting (sort_by), mapping (map), pluralization
-- ✅ **Type safety**: Robust handling of mixed types and edge cases
-- ✅ **Parameter parsing**: Support for quoted parameters and complex expressions
-
-### Performance & Quality
-- **Type Safety**: MoonBit's type system prevents runtime errors
-- **Memory Safety**: Efficient memory management with optimized algorithms
-- **Security**: XSS protection and safe template evaluation
-- **Performance**: Optimized parsing and rendering pipeline with improved sorting
-- **Reliability**: **357 comprehensive tests** ensure enterprise-grade stability
-- **Coverage**: Extensive edge case testing and error handling validation
-- **🆕 Modern Testing**: **48 snapshot-based tests** with `@json.inspect` for complete AST verification
-- **🆕 Test Automation**: `moon test -u` automatically maintains expected parsing results
-
-### Comparison with Original OCaml Implementation
-
-This MoonBit implementation **exceeds** typical OCaml Liquid libraries in several key areas:
-
-| Feature | OCaml liquid-ml | MoonBit liquid-moonbit |
-|---------|-----------------|------------------------|
-| **Tags** | ~15 basic tags | ✅ **20+ tags** including increment, decrement, echo, ifchanged |
-| **Filters** | ~30 filters | ✅ **50+ filters** with enhanced parameters |
-| **For Loops** | Basic iteration | ✅ **Advanced modifiers** (limit, offset, reversed) |
-| **Array Operations** | Limited | ✅ **Complete suite** (push, pop, shift, unshift, at, concat) |
-| **Type Safety** | Runtime errors possible | ✅ **Compile-time safety** with MoonBit's type system |
-| **Error Handling** | Basic | ✅ **Configurable policies** (strict, warn, silent) |
-| **Test Coverage** | ~50-100 tests | ✅ **357 comprehensive tests** |
-| **🆕 Snapshot Testing** | Manual verification | ✅ **48 `@json.inspect` tests** with automatic maintenance |
-| **🆕 AST Verification** | Limited | ✅ **Complete parsing structure** inspection |
-| **Performance** | Interpreted | ✅ **Compiled bytecode** with optimized algorithms |
-| **Object Access** | Basic | ✅ **Deep nesting** with robust property access |
-| **Parameter Parsing** | Limited | ✅ **Advanced parsing** with quote handling |
-
-### Enterprise-Grade Features
-
-- 🔒 **Production Security**: XSS protection, safe template evaluation
-- ⚡ **High Performance**: Compiled bytecode, optimized algorithms  
-- 🛡️ **Type Safety**: Compile-time error prevention
-- 🧪 **Comprehensive Testing**: 357 tests covering all edge cases
-- 📸 **🆕 Modern Snapshot Testing**: 48 `@json.inspect` tests with automatic AST verification
-- 🔄 **🆕 Test Automation**: `moon test -u` maintains parsing expectations automatically
-- 📈 **Scalability**: Efficient memory management for large templates
-- 🔧 **Extensibility**: Clean architecture for custom filters and tags
-
-#### **🎯 Snapshot Testing Benefits**
-- **Zero Maintenance**: Tests update themselves with `moon test -u`
-- **Complete Coverage**: Every parsing test shows full AST structure
-- **Regression Prevention**: Structural changes immediately detected
-- **Developer Productivity**: Focus on features, not test maintenance
-- **Documentation**: Tests serve as living documentation of parsing behavior
 ### Numeric and date filter behavior
 
 Parameterized `plus`, `minus`, `times`, `divided_by`, `modulo`, and `round`

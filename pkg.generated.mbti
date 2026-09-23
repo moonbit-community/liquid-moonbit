@@ -1,8 +1,14 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "bobzhang/liquid"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn apply_filter(LiquidValue, String) -> LiquidValue
+
+pub fn apply_filter_values(LiquidValue, String, Array[LiquidValue], options? : Map[String, LiquidValue]) -> Result[LiquidValue, Diagnostic]
 
 pub fn apply_filter_with_params(LiquidValue, Filter) -> LiquidValue
 
@@ -17,6 +23,8 @@ pub fn break_node() -> LiquidNode
 pub fn capture_node(String, Array[LiquidNode]) -> LiquidNode
 
 pub fn case_node(String, Array[(String, Array[LiquidNode])], Array[LiquidNode]?) -> LiquidNode
+
+pub fn compile(String) -> Result[Template, Array[Diagnostic]]
 
 pub fn content_node() -> LiquidNode
 
@@ -105,6 +113,18 @@ pub fn whitespace_control(Bool, Bool) -> WhitespaceControl
 // Errors
 
 // Types and methods
+pub struct Diagnostic {
+  phase : String
+  code : String
+  message : String
+  offset : Int?
+  template : String?
+} derive(Eq, ToJson, @debug.Debug)
+pub fn Diagnostic::equal(Self, Self) -> Bool
+pub fn Diagnostic::not_equal(Self, Self) -> Bool
+pub fn Diagnostic::to_json(Self) -> Json
+pub fn Diagnostic::to_repr(Self) -> @debug.Repr
+
 pub enum ErrorPolicy {
   Strict
   Warn
@@ -187,6 +207,9 @@ pub enum LiquidValue {
 } derive(ToJson)
 pub fn LiquidValue::to_json(Self) -> Json
 pub fn LiquidValue::to_string(Self) -> String
+
+type Template
+pub fn Template::render(Self, LiquidContext) -> Result[String, Array[Diagnostic]]
 
 pub struct TemplateWithLayout {
   nodes : Array[LiquidNode]
