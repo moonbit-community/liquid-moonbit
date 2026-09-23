@@ -233,9 +233,7 @@ fn TemplateParser::body(
               let (body, stop) = self.body(["when", "else", "endcase"])
               for group in split_unquoted(value, " or ") {
                 for choice in split_unquoted(group, ",") {
-                  branches.push(
-                    (choice.trim().trim(chars="'\"").to_owned(), body),
-                  )
+                  branches.push((choice.trim().to_owned(), body))
                 }
               }
               next = stop
