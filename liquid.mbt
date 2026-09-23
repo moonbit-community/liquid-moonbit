@@ -141,44 +141,38 @@ pub fn parse(template : String) -> LiquidTemplate {
 fn parse_for_loop_modifiers(
   collection_str : String,
 ) -> (String, ForLoopModifiers) {
-  let parts = collection_str.split(" ").collect()
+  let parts = collection_str
+    .split(":")
+    .map(fn(s) { s.to_owned() })
+    .collect()
+    .join(" : ")
+    .split(" ")
+    .flat_map(fn(part) { part.split("\t") })
+    .filter(fn(part) { !part.is_empty() })
+    .collect()
   let collection = parts[0].to_owned()
   let mut limit : Int? = None
   let mut offset : Int? = None
   let mut reversed = false
   let mut i = 1
   while i < parts.length() {
-    let part = parts[i].to_owned()
-    if part == "limit:" && i + 1 < parts.length() {
-      // Get the next part as the limit value
-      let limit_str = parts[i + 1].to_owned().trim(chars=" \t").to_owned()
-      limit = match limit_str {
-        "1" => Some(1)
-        "2" => Some(2)
-        "3" => Some(3)
-        "4" => Some(4)
-        "5" => Some(5)
-        "10" => Some(10)
-        _ => Some(5) // Default
+    let part = parts[i]
+    if (part == "limit" || part == "offset") &&
+      i + 2 < parts.length() &&
+      parts[i + 1] == ":" {
+      let count = parse_integer(parts[i + 2].to_owned())
+      if part == "limit" {
+        limit = count
+      } else {
+        offset = count
       }
-      i = i + 1 // Skip the next part since we consumed it
-    } else if part == "offset:" && i + 1 < parts.length() {
-      // Get the next part as the offset value
-      let offset_str = parts[i + 1].to_owned().trim(chars=" \t").to_owned()
-      offset = match offset_str {
-        "0" => Some(0)
-        "1" => Some(1)
-        "2" => Some(2)
-        "3" => Some(3)
-        "4" => Some(4)
-        "5" => Some(5)
-        _ => Some(0) // Default
+      i += 3
+    } else {
+      if part == "reversed" {
+        reversed = true
       }
-      i = i + 1 // Skip the next part since we consumed it
-    } else if part == "reversed" {
-      reversed = true
+      i += 1
     }
-    i = i + 1
   }
   (collection, { limit, offset, reversed, })
 }
@@ -226,7 +220,7 @@ fn render_node_inner(
           match modifiers.offset {
             Some(offset_count) => {
               let offset_items : Array[LiquidValue] = []
-              for i in offset_count..<processed_items.length() {
+              for i in offset_count.max(0)..<processed_items.length() {
                 offset_items.push(processed_items[i])
               }
               processed_items = offset_items
