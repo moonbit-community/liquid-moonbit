@@ -2782,8 +2782,8 @@ test "case tag with matching condition" {
   let context = LiquidContext::new()
   context.set("user_type", string_value("admin"))
   let when_branches = [
-    ("admin", [text_node("Admin Panel")]),
-    ("user", [text_node("User Dashboard")]),
+    ("\'admin\'", [text_node("Admin Panel")]),
+    ("\'user\'", [text_node("User Dashboard")]),
   ]
   let case_test = case_node(
     "user_type",
@@ -2800,8 +2800,8 @@ test "case tag with no match" {
   let context = LiquidContext::new()
   context.set("user_type", string_value("guest"))
   let when_branches = [
-    ("admin", [text_node("Admin Panel")]),
-    ("user", [text_node("User Dashboard")]),
+    ("\'admin\'", [text_node("Admin Panel")]),
+    ("\'user\'", [text_node("User Dashboard")]),
   ]
   let case_test = case_node(
     "user_type",
@@ -3095,9 +3095,9 @@ test "case statement with when branches" {
   let context = LiquidContext::new()
   context.set("role", string_value("admin"))
   let when_branches = [
-    ("admin", [text_node("Administrator Dashboard")]),
-    ("editor", [text_node("Content Editor")]),
-    ("viewer", [text_node("Read Only Access")]),
+    ("\'admin\'", [text_node("Administrator Dashboard")]),
+    ("\'editor\'", [text_node("Content Editor")]),
+    ("\'viewer\'", [text_node("Read Only Access")]),
   ]
   let case_test = case_node(
     "role",
@@ -3114,9 +3114,9 @@ test "case statement no match uses else" {
   let context = LiquidContext::new()
   context.set("status", string_value("pending"))
   let when_branches = [
-    ("active", [text_node("System Active")]),
-    ("inactive", [text_node("System Inactive")]),
-    ("maintenance", [text_node("Under Maintenance")]),
+    ("\'active\'", [text_node("System Active")]),
+    ("\'inactive\'", [text_node("System Inactive")]),
+    ("\'maintenance\'", [text_node("Under Maintenance")]),
   ]
   let case_test = case_node(
     "status",
@@ -3142,10 +3142,10 @@ test "case with multiple when conditions" {
   let context = LiquidContext::new()
   context.set("user_level", string_value("member"))
   let when_branches = [
-    ("guest", [text_node("Limited Access")]),
-    ("member", [text_node("Member Benefits")]),
-    ("premium", [text_node("Premium Features")]),
-    ("admin", [text_node("Full Control")]),
+    ("\'guest\'", [text_node("Limited Access")]),
+    ("\'member\'", [text_node("Member Benefits")]),
+    ("\'premium\'", [text_node("Premium Features")]),
+    ("\'admin\'", [text_node("Full Control")]),
   ]
   let case_test = case_node("user_level", when_branches, None)
   let result = render_node(case_test, context)

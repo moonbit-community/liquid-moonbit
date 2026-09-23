@@ -260,15 +260,12 @@ fn render_node_inner(
       }
     }
     Case(expression, when_branches, else_body) => {
-      let expr_value = match context.get(expression) {
-        Some(value) => value.to_string()
-        None => ""
-      }
+      let expr_value = evaluate_expression(expression, context)
 
       // Check each when branch
       for branch in when_branches {
         let (when_value, when_body) = branch
-        if expr_value == when_value {
+        if values_equal(expr_value, evaluate_expression(when_value, context)) {
           let mut output = ""
           for body_node in when_body {
             output = output + render_node_inner(body_node, context, state)
@@ -1657,6 +1654,7 @@ pub fn unless_node(condition : String, body : Array[LiquidNode]) -> LiquidNode {
 }
 
 ///|
+/// Both the subject and branch keys are Liquid expressions; quote string literals.
 pub fn case_node(
   expression : String,
   when_branches : Array[(String, Array[LiquidNode])],
