@@ -30,41 +30,6 @@ fn parse_number(text : String) -> Double? {
 }
 
 ///|
-pub fn evaluate_expression(
-  expression : String,
-  context : LiquidContext,
-) -> LiquidValue {
-  let (text, filters) = parse_output(expression)
-  if !filters.is_empty() {
-    return apply_context_filters(
-      evaluate_expression(text, context),
-      filters,
-      context,
-    )
-  }
-  if text.length() >= 2 &&
-    (text[0] == 39 || text[0] == 34) &&
-    text[text.length() - 1] == text[0] {
-    return String(text[1:text.length() - 1].to_owned())
-  }
-  match text {
-    "true" => Bool(true)
-    "false" => Bool(false)
-    "nil" | "null" => Null
-    _ =>
-      match parse_number(text) {
-        Some(number) =>
-          if text.contains(".") {
-            Float(number)
-          } else {
-            Number(number)
-          }
-        None => context.get(text).unwrap_or(Null)
-      }
-  }
-}
-
-///|
 fn is_truthy(value : LiquidValue) -> Bool {
   match value {
     Null | Bool(false) => false
@@ -105,42 +70,53 @@ fn values_equal(left : LiquidValue, right : LiquidValue) -> Bool {
 }
 
 ///|
-pub fn evaluate_condition(condition : String, context : LiquidContext) -> Bool {
-  let text = condition.trim().to_owned()
-  // Splitting at the first logical operator preserves Liquid's right-to-left evaluation.
-  let logical = match
-    (find_unquoted(text, " and "), find_unquoted(text, " or ")) {
-    (Some(a), Some(b)) =>
-      if a < b {
-        Some((a, " and "))
-      } else {
-        Some((b, " or "))
+fn compare_typed_values(
+  left_value : LiquidValue,
+  right_value : LiquidValue,
+  operator : String,
+) -> Bool {
+  match operator {
+    "==" => values_equal(left_value, right_value)
+    "!=" => !values_equal(left_value, right_value)
+    "contains" =>
+      match (left_value, right_value) {
+        (String(haystack), String(needle)) => haystack.contains(needle)
+        (Array(arr), needle) => {
+          let mut found = false
+          for item in arr {
+            if values_equal(item, needle) {
+              found = true
+              break
+            }
+          }
+          found
+        }
+        _ => false
       }
-    (Some(a), None) => Some((a, " and "))
-    (None, Some(b)) => Some((b, " or "))
-    (None, None) => None
+    ">" =>
+      match (left_value, right_value) {
+        (Number(l) | Float(l), Number(r) | Float(r)) => l > r
+        (String(l), String(r)) => l > r
+        _ => false
+      }
+    "<" =>
+      match (left_value, right_value) {
+        (Number(l) | Float(l), Number(r) | Float(r)) => l < r
+        (String(l), String(r)) => l < r
+        _ => false
+      }
+    ">=" =>
+      match (left_value, right_value) {
+        (Number(l) | Float(l), Number(r) | Float(r)) => l >= r
+        (String(l), String(r)) => l >= r
+        _ => false
+      }
+    "<=" =>
+      match (left_value, right_value) {
+        (Number(l) | Float(l), Number(r) | Float(r)) => l <= r
+        (String(l), String(r)) => l <= r
+        _ => false
+      }
+    _ => false
   }
-  if logical is Some((at, op)) {
-    let left = evaluate_condition(text[:at].to_owned(), context)
-    if op == " and " {
-      return left &&
-        evaluate_condition(text[at + op.length():].to_owned(), context)
-    }
-    return left ||
-      evaluate_condition(text[at + op.length():].to_owned(), context)
-  }
-  if text.strip_prefix("not ") is Some(rest) {
-    return !evaluate_condition(rest.to_owned(), context)
-  }
-  for op in ["==", "!=", ">=", "<=", ">", "<", " contains "] {
-    if find_unquoted(text, op) is Some(at) {
-      return compare_values(
-        text[:at].to_owned(),
-        text[at + op.length():].to_owned(),
-        op.trim().to_owned(),
-        context,
-      )
-    }
-  }
-  is_truthy(evaluate_expression(text, context))
 }

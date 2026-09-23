@@ -1,11 +1,15 @@
 ///|
 fn integer_argument(
-  parameters : Array[String],
+  parameters : Array[LiquidValue],
   index : Int,
   fallback : Int,
 ) -> Int {
   match parameters.get(index) {
-    Some(text) => parse_integer(text).unwrap_or(fallback)
+    Some(value) =>
+      match numeric_parts(value) {
+        Some((n, _)) if n >= -2147483648.0 && n <= 2147483647.0 => n.to_int()
+        _ => fallback
+      }
     None => fallback
   }
 }
@@ -23,7 +27,7 @@ fn slice_bounds(size : Int, start : Int, count : Int) -> (Int, Int) {
 fn sequence_filter(
   value : LiquidValue,
   name : String,
-  parameters : Array[String],
+  parameters : Array[LiquidValue],
 ) -> LiquidValue {
   match name {
     "truncate" =>
@@ -31,7 +35,10 @@ fn sequence_filter(
         String(s) => {
           let chars = s.iter().collect()
           let size = integer_argument(parameters, 0, 50).max(0)
-          let suffix = parameters.get(1).map(unquote_argument).unwrap_or("...")
+          let suffix = parameters
+            .get(1)
+            .map(LiquidValue::to_string)
+            .unwrap_or("...")
           if chars.length() <= size {
             return value
           }
@@ -52,7 +59,10 @@ fn sequence_filter(
             .map(fn(w) { w.to_owned() })
             .collect()
           let count = integer_argument(parameters, 0, 15).max(1)
-          let suffix = parameters.get(1).map(unquote_argument).unwrap_or("...")
+          let suffix = parameters
+            .get(1)
+            .map(LiquidValue::to_string)
+            .unwrap_or("...")
           if words.length() <= count {
             value
           } else {

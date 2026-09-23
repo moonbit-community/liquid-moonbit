@@ -167,7 +167,7 @@ fn CalendarDate::format(self : CalendarDate, format : String) -> String? {
 fn date_filter(
   value : LiquidValue,
   name : String,
-  parameters : Array[String],
+  parameters : Array[LiquidValue],
 ) -> LiquidValue {
   guard value is String(text) && parse_calendar_date(text) is Some(date) else {
     return value
@@ -180,7 +180,7 @@ fn date_filter(
       if parameters.is_empty() {
         "%Y-%m-%d"
       } else {
-        unquote_argument(parameters[0])
+        parameters[0].to_string()
       }
   }
   guard date.format(format) is Some(formatted) else { return value }

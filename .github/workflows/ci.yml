@@ -23,7 +23,15 @@ jobs:
         run: moon update
 
       - name: Check
-        run: moon check --deny-warn
+        run: moon check --target all --deny-warn --warn-list +25+73
+
+      - name: Check formatting
+        run: moon fmt --check
+
+      - name: Verify reference corpus
+        run: |
+          gem install --user-install liquid --version 5.4.0 --no-document
+          ruby tools/reference_cases.rb --check
 
       - name: Test
         run: moon test --target all

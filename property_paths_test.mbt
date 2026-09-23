@@ -1,6 +1,6 @@
 ///|
 test "property paths must resolve every segment" {
-  let context = LiquidContext::with_error_policy(silent_policy())
+  let context = LiquidContext::new()
   context.set(
     "user",
     object_value({
@@ -18,10 +18,15 @@ test "property paths must resolve every segment" {
       "user.missing.nope", "user.address.city.nope",
     ] {
     assert_true(context.get(path) is None)
-    assert_eq(parse("{{ " + path + " }}").render(context), "")
+    assert_true(
+      @liquid.compile("{{ " + path + " }}").unwrap().render(context) is Err(_),
+    )
   }
   assert_eq(
-    parse("{{ user.name }}:{{ user.address.city }}").render(context),
+    @liquid.compile("{{ user.name }}:{{ user.address.city }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "Alice:Paris",
   )
 }

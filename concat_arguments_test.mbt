@@ -5,40 +5,52 @@ test "concat resolves typed arrays without mutating either input" {
   context.set("right", array_value([bool_value(false), string_value("b")]))
   context.set("empty", array_value([]))
   assert_eq(
-    parse("{{ left | concat: right | join: ',' }}").render(context),
+    @liquid.compile("{{ left | concat: right | join: ',' }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "a,2,false,b",
   )
   assert_eq(
-    parse("{{ left | concat: empty | concat: right | join: ',' }}").render(
-      context,
-    ),
+    @liquid.compile("{{ left | concat: empty | concat: right | join: ',' }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "a,2,false,b",
   )
   assert_eq(
-    parse("{{ left | concat: left | join: ',' }}").render(context),
+    @liquid.compile("{{ left | concat: left | join: ',' }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "a,2,a,2",
   )
   assert_eq(
-    parse("{{ left | join: ',' }}|{{ right | join: ',' }}").render(context),
+    @liquid.compile("{{ left | join: ',' }}|{{ right | join: ',' }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "a,2|false,b",
   )
 }
 
 ///|
 test "concat preserves object values and reports invalid operands" {
-  let context = LiquidContext::with_error_policy(strict_policy())
+  let context = LiquidContext::new()
   context.set("left", array_value([]))
   context.set(
     "right",
     array_value([object_value(Map([("name", string_value("Ada"))]))]),
   )
   assert_eq(
-    parse("{{ left | concat: right | map: 'name' | join: ',' }}").render(
-      context,
-    ),
+    @liquid.compile("{{ left | concat: right | map: 'name' | join: ',' }}")
+    .unwrap()
+    .render(context)
+    .unwrap(),
     "Ada",
   )
   assert_true(
-    parse("{{ left | concat: 'invalid' }}").render(context).contains("concat"),
+    @liquid.compile("{{ left | concat: 'invalid' }}").unwrap().render(context)
+    is Err(_),
   )
 }

@@ -1,8 +1,8 @@
 ///|
 priv enum TemplateToken {
   Text(String)
-  Output(String)
-  Tag(String)
+  Output(String, Int)
+  Tag(String, Int)
   Verbatim(String, String)
 }
 
@@ -36,7 +36,10 @@ fn skip_space(source : String, start : Int) -> Int {
 }
 
 ///|
-fn tokenize_template(source : String) -> Array[TemplateToken] {
+fn tokenize_template(
+  source : String,
+  diagnostics : Array[Diagnostic],
+) -> Array[TemplateToken] {
   let tokens : Array[TemplateToken] = []
   let mut pos = 0
   while pos < source.length() {
@@ -54,6 +57,9 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
     let closing = if output { "}}" } else { "%}" }
     guard find_unquoted(source[start + 2:].to_owned(), closing)
       is Some(end_offset) else {
+      diagnostics.push(
+        parse_diagnostic("unclosed_tag", "Expected " + closing, start),
+      )
       tokens.push(Text(rest))
       break
     }
@@ -70,7 +76,7 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
     let tag = if from <= to { source[from:to].trim().to_owned() } else { "" }
     pos = if right { skip_space(source, end + 2) } else { end + 2 }
     if output {
-      tokens.push(Output(tag))
+      tokens.push(Output(tag, start))
       continue
     }
     let (name, _) = tag_parts(tag)
@@ -106,11 +112,14 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
         search = candidate + 2
       }
       if !found {
+        diagnostics.push(
+          parse_diagnostic("unclosed_block", "Expected end" + name, start),
+        )
         tokens.push(Verbatim(name, source[body_start:].to_owned()))
         pos = source.length()
       }
     } else {
-      tokens.push(Tag(tag))
+      tokens.push(Tag(tag, start))
     }
   }
   tokens
@@ -120,46 +129,68 @@ fn tokenize_template(source : String) -> Array[TemplateToken] {
 priv struct TemplateParser {
   tokens : Array[TemplateToken]
   mut pos : Int
+  diagnostics : Array[Diagnostic]
+  end_offset : Int
 }
 
 ///|
 fn TemplateParser::body(
   self : TemplateParser,
   stops : Array[String],
-) -> (Array[LiquidNode], String) {
-  let nodes : Array[LiquidNode] = []
+) -> (Array[RenderNode], String) {
+  let nodes : Array[RenderNode] = []
   while self.pos < self.tokens.length() {
     let token = self.tokens[self.pos]
     self.pos += 1
     match token {
       Text(text) => nodes.push(Text(text))
-      Output(expression) => {
+      Output(expression, at) => {
+        if expression.is_empty() {
+          self.diagnostics.push(
+            parse_diagnostic(
+              "empty_expression", "Expected an output expression", at,
+            ),
+          )
+        }
         let (value, filters) = parse_output(expression)
-        nodes.push(Variable(value, filters))
+        nodes.push(Output(compile_output(value, filters), true))
       }
       Verbatim(name, text) =>
         nodes.push(
           match name {
-            "raw" => Raw(text)
+            "raw" => Text(text)
             "style" => Style(text)
-            _ => Comment(text)
+            _ => Text("")
           },
         )
-      Tag(tag) => {
+      Tag(tag, at) => {
         let (name, args) = tag_parts(tag)
         if stops.contains(name) {
           return (nodes, tag)
+        }
+        if args.is_empty() &&
+          [
+            "if", "unless", "case", "assign", "for", "tablerow", "capture", "increment",
+            "decrement", "include", "render", "echo",
+          ].contains(name) {
+          self.diagnostics.push(
+            parse_diagnostic(
+              "missing_argument",
+              "Expected an argument for " + name,
+              at,
+            ),
+          )
         }
         match name {
           "if" | "unless" => {
             let end = if name == "if" { "endif" } else { "endunless" }
             let (body, stop) = self.body(["elsif", "else", end])
-            let branches : Array[(String, Array[LiquidNode])] = []
+            let branches : Array[(Condition, Array[RenderNode])] = []
             let mut next = stop
             while tag_parts(next).0 == "elsif" {
               let condition = tag_parts(next).1
               let (branch, stop) = self.body(["elsif", "else", end])
-              branches.push((condition, branch))
+              branches.push((compile_condition(condition), branch))
               next = stop
             }
             let otherwise = if next == "else" {
@@ -169,11 +200,12 @@ fn TemplateParser::body(
             }
             if name == "unless" {
               match otherwise {
-                None => nodes.push(Unless(args, body))
-                Some(other) => nodes.push(If(args, other, [], Some(body)))
+                None => nodes.push(Unless(compile_condition(args), body))
+                Some(other) =>
+                  nodes.push(If(compile_condition(args), other, [], Some(body)))
               }
             } else {
-              nodes.push(If(args, body, branches, otherwise))
+              nodes.push(If(compile_condition(args), body, branches, otherwise))
             }
           }
           "for" | "tablerow" => {
@@ -198,10 +230,24 @@ fn TemplateParser::body(
                   match otherwise {
                     Some(other) =>
                       nodes.push(
-                        ForElse(variable, collection, body, modifiers, other),
+                        For(
+                          variable,
+                          compile_expression(collection),
+                          body,
+                          modifiers,
+                          other,
+                        ),
                       )
                     None =>
-                      nodes.push(For(variable, collection, body, modifiers))
+                      nodes.push(
+                        For(
+                          variable,
+                          compile_expression(collection),
+                          body,
+                          modifiers,
+                          [],
+                        ),
+                      )
                   }
                 } else {
                   let parts = rest.split(" cols:").collect()
@@ -217,23 +263,39 @@ fn TemplateParser::body(
                     3
                   }
                   nodes.push(
-                    TableRow(variable, parts[0].trim().to_owned(), body, cols),
+                    TableRow(
+                      variable,
+                      compile_expression(parts[0].trim().to_owned()),
+                      body,
+                      cols,
+                    ),
                   )
                 }
               }
-              None => nodes.push(Comment(tag))
+              None => {
+                self.diagnostics.push(
+                  parse_diagnostic(
+                    "invalid_tag",
+                    "Invalid " + name + " syntax",
+                    at,
+                  ),
+                )
+                nodes.push(Text(""))
+              }
             }
           }
           "case" => {
             let (_, first) = self.body(["when", "else", "endcase"])
-            let branches : Array[(String, Array[LiquidNode])] = []
+            let branches : Array[(Expr, Array[RenderNode])] = []
             let mut next = first
             while tag_parts(next).0 == "when" {
               let value = tag_parts(next).1
               let (body, stop) = self.body(["when", "else", "endcase"])
               for group in split_unquoted(value, " or ") {
                 for choice in split_unquoted(group, ",") {
-                  branches.push((choice.trim().to_owned(), body))
+                  branches.push(
+                    (compile_expression(choice.trim().to_owned()), body),
+                  )
                 }
               }
               next = stop
@@ -243,7 +305,7 @@ fn TemplateParser::body(
             } else {
               None
             }
-            nodes.push(Case(args, branches, otherwise))
+            nodes.push(Case(compile_expression(args), branches, otherwise))
           }
           "capture" => nodes.push(Capture(args, self.body(["endcapture"]).0))
           "ifchanged" => nodes.push(IfChanged(self.body(["endifchanged"]).0))
@@ -256,7 +318,13 @@ fn TemplateParser::body(
                 .split("\n")
                 .map(fn(line) { "{% " + line.trim().to_owned() + " %}" })
                 .collect()
-              nodes.push(Liquid(parse_template(lines.join(""))))
+              let nested : Array[Diagnostic] = []
+              nodes.push(
+                Liquid(parse_template(lines.join(""), diagnostics=nested)),
+              )
+              for diagnostic in nested {
+                self.diagnostics.push({ ..diagnostic, offset: Some(at), })
+              }
             }
           "assign" =>
             match find_unquoted(args, "=") {
@@ -264,19 +332,28 @@ fn TemplateParser::body(
                 nodes.push(
                   Assign(
                     args[:at].trim().to_owned(),
-                    args[at + 1:].trim().to_owned(),
+                    compile_expression(args[at + 1:].trim().to_owned()),
                   ),
                 )
-              None => nodes.push(Comment(tag))
+              None => {
+                self.diagnostics.push(
+                  parse_diagnostic(
+                    "invalid_tag",
+                    "Invalid " + name + " syntax",
+                    at,
+                  ),
+                )
+                nodes.push(Text(""))
+              }
             }
           "echo" => {
             let (value, filters) = parse_output(args)
-            nodes.push(Echo(value, filters))
+            nodes.push(Output(compile_output(value, filters), false))
           }
           "break" => nodes.push(Break)
           "continue" => nodes.push(Continue)
-          "include" => nodes.push(Include(args))
-          "render" => nodes.push(Render(args))
+          "include" => nodes.push(Include(compile_partial(args)))
+          "render" => nodes.push(Render(compile_partial(args)))
           "section" => nodes.push(Section(args))
           "layout" => nodes.push(Layout(args))
           "content" => nodes.push(Content)
@@ -297,16 +374,42 @@ fn TemplateParser::body(
               ),
             )
           }
-          _ => nodes.push(Comment(tag))
+          _ => {
+            self.diagnostics.push(
+              parse_diagnostic(
+                "unknown_tag",
+                "Unknown or misplaced tag '" + name + "'",
+                at,
+              ),
+            )
+            nodes.push(Text(""))
+          }
         }
       }
     }
+  }
+  if !stops.is_empty() {
+    self.diagnostics.push(
+      parse_diagnostic(
+        "unclosed_block",
+        "Expected " + stops[stops.length() - 1],
+        self.end_offset,
+      ),
+    )
   }
   (nodes, "")
 }
 
 ///|
-fn parse_template(source : String) -> Array[LiquidNode] {
-  let parser : TemplateParser = { tokens: tokenize_template(source), pos: 0, }
+fn parse_template(
+  source : String,
+  diagnostics? : Array[Diagnostic] = [],
+) -> Array[RenderNode] {
+  let parser : TemplateParser = {
+    tokens: tokenize_template(source, diagnostics),
+    pos: 0,
+    diagnostics,
+    end_offset: source.length(),
+  }
   parser.body([]).0
 }
