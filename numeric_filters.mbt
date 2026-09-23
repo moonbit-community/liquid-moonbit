@@ -62,3 +62,10 @@ fn numeric_filter(
     _ => value
   }
 }
+
+///|
+fn parse_integer(text : String) -> Int? {
+  Some(@string.parse_int(unquote_argument(text.trim().to_owned()))) catch {
+    _ => None
+  }
+}
