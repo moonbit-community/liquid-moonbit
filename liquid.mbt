@@ -581,30 +581,7 @@ pub fn apply_filter_with_params(
       date_filter(value, filter_obj.name, filter_obj.parameters)
     "default" =>
       default_value(value, filter_obj.parameters, LiquidContext::new())
-    "truncate" =>
-      match value {
-        String(s) => {
-          let max_length = if filter_obj.parameters.length() > 0 {
-            // Try to parse the parameter as a number
-            match filter_obj.parameters[0] {
-              "10" => 10
-              "20" => 20
-              "30" => 30
-              "50" => 50
-              "100" => 100
-              _ => 50 // Default
-            }
-          } else {
-            50 // Default truncate length
-          }
-          if s.length() > max_length {
-            String(s[0:max_length].to_owned() + "...")
-          } else {
-            value
-          }
-        }
-        _ => value
-      }
+    "truncate" => sequence_filter(value, "truncate", filter_obj.parameters)
     "join" =>
       match value {
         Array(arr) => {
@@ -637,68 +614,7 @@ pub fn apply_filter_with_params(
         }
         _ => value
       }
-    "slice" => {
-      let (start_pos, length) = if filter_obj.parameters.length() >= 2 {
-        // Parse start and length parameters
-        let start_param = match filter_obj.parameters[0] {
-          "0" => 0
-          "1" => 1
-          "2" => 2
-          "3" => 3
-          _ => 0
-        }
-        let length_param = match filter_obj.parameters[1] {
-          "1" => 1
-          "2" => 2
-          "3" => 3
-          "4" => 4
-          "5" => 5
-          _ => 3
-        }
-        (start_param, length_param)
-      } else if filter_obj.parameters.length() == 1 {
-        // Only start position provided
-        let start_param = match filter_obj.parameters[0] {
-          "0" => 0
-          "1" => 1
-          "2" => 2
-          "3" => 3
-          _ => 0
-        }
-        (start_param, 3) // Default length
-      } else {
-        (0, 3) // Default start and length
-      }
-      match value {
-        Array(arr) => {
-          let sliced : Array[LiquidValue] = []
-          let end_pos = if start_pos + length > arr.length() {
-            arr.length()
-          } else {
-            start_pos + length
-          }
-          for i in start_pos..<end_pos {
-            if i < arr.length() {
-              sliced.push(arr[i])
-            }
-          }
-          Array(sliced)
-        }
-        String(s) => {
-          let end_pos = if start_pos + length > s.length() {
-            s.length()
-          } else {
-            start_pos + length
-          }
-          if start_pos < s.length() {
-            String(s[start_pos:end_pos].to_owned())
-          } else {
-            String("")
-          }
-        }
-        _ => value
-      }
-    }
+    "slice" => sequence_filter(value, "slice", filter_obj.parameters)
     "replace" =>
       match value {
         String(s) =>
@@ -772,59 +688,8 @@ pub fn apply_filter_with_params(
         }
         _ => value
       }
-    "offset" =>
-      match value {
-        Array(arr) => {
-          let offset_count = if filter_obj.parameters.length() > 0 {
-            match filter_obj.parameters[0] {
-              "0" => 0
-              "1" => 1
-              "2" => 2
-              "3" => 3
-              "4" => 4
-              "5" => 5
-              _ => 1 // Default offset
-            }
-          } else {
-            1 // Default offset
-          }
-          let offset_arr : Array[LiquidValue] = []
-          for i in offset_count..<arr.length() {
-            offset_arr.push(arr[i])
-          }
-          Array(offset_arr)
-        }
-        _ => value
-      }
-    "limit" =>
-      match value {
-        Array(arr) => {
-          let limit_count = if filter_obj.parameters.length() > 0 {
-            match filter_obj.parameters[0] {
-              "1" => 1
-              "2" => 2
-              "3" => 3
-              "4" => 4
-              "5" => 5
-              "10" => 10
-              _ => 2 // Default limit
-            }
-          } else {
-            2 // Default limit
-          }
-          let limited : Array[LiquidValue] = []
-          let max_items = if arr.length() > limit_count {
-            limit_count
-          } else {
-            arr.length()
-          }
-          for i in 0..<max_items {
-            limited.push(arr[i])
-          }
-          Array(limited)
-        }
-        _ => value
-      }
+    "offset" => sequence_filter(value, "offset", filter_obj.parameters)
+    "limit" => sequence_filter(value, "limit", filter_obj.parameters)
     "where" =>
       match value {
         Array(arr) =>
@@ -974,36 +839,7 @@ pub fn apply_filter_with_params(
           }
         _ => value
       }
-    "at" =>
-      match value {
-        Array(arr) =>
-          if filter_obj.parameters.length() > 0 {
-            // Parse index parameter
-            let index_param = filter_obj.parameters[0]
-            let index = match index_param {
-              "0" => 0
-              "1" => 1
-              "2" => 2
-              "3" => 3
-              "4" => 4
-              "5" => 5
-              "-1" => arr.length() - 1 // Negative indexing
-              "-2" => if arr.length() >= 2 { arr.length() - 2 } else { 0 }
-              _ => 0 // Default to first element
-            }
-            if index < arr.length() {
-              arr[index]
-            } else {
-              Null
-            }
-            // No index specified, return first element
-          } else if arr.length() > 0 {
-            arr[0]
-          } else {
-            Null
-          }
-        _ => value
-      }
+    "at" => sequence_filter(value, "at", filter_obj.parameters)
     "map" =>
       match value {
         Array(arr) =>
@@ -1038,36 +874,7 @@ pub fn apply_filter_with_params(
         _ => value
       }
     "truncatewords" =>
-      match value {
-        String(s) =>
-          if filter_obj.parameters.length() > 0 {
-            // Parse word count parameter
-            let word_count_param = filter_obj.parameters[0]
-            let word_count = match word_count_param {
-              "5" => 5
-              "10" => 10
-              "15" => 15
-              "20" => 20
-              "25" => 25
-              "30" => 30
-              _ => 15 // Default
-            }
-            let words = s.split(" ").collect()
-            if words.length() > word_count {
-              let truncated_words : Array[String] = []
-              for i in 0..<word_count {
-                truncated_words.push(words[i].to_owned())
-              }
-              String(truncated_words.join(" ") + "...")
-            } else {
-              value
-            }
-          } else {
-            // Fallback to basic truncatewords
-            apply_filter(value, filter_obj.name)
-          }
-        _ => value
-      }
+      sequence_filter(value, "truncatewords", filter_obj.parameters)
     _ =>
       // For filters without parameters, use the original apply_filter function
       apply_filter(value, filter_obj.name)
@@ -1206,18 +1013,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         }
         _ => value
       }
-    "truncate" =>
-      match value {
-        String(s) => {
-          let max_length = 50 // Default truncate length
-          if s.length() > max_length {
-            String(s[0:max_length].to_owned() + "...")
-          } else {
-            value
-          }
-        }
-        _ => value
-      }
+    "truncate" => sequence_filter(value, "truncate", [])
     "plus" =>
       match value {
         Number(n) => Number(n + 1.0) // Default increment by 1
@@ -1280,17 +1076,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
           Array(arr)
         _ => value
       }
-    "at" =>
-      match value {
-        Array(arr) =>
-          // Basic at filter - return first element
-          if arr.length() > 0 {
-            arr[0]
-          } else {
-            Null
-          }
-        _ => value
-      }
+    "at" => sequence_filter(value, "at", [])
     "concat" =>
       match value {
         Array(arr1) =>
@@ -1364,23 +1150,7 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         String(s) => String(s.trim_end(chars=" \t\n\r").to_owned())
         _ => value
       }
-    "truncatewords" =>
-      match value {
-        String(s) => {
-          // Truncate by word count (default 15 words)
-          let words = s.split(" ").collect()
-          if words.length() > 15 {
-            let truncated_words : Array[String] = []
-            for i in 0..<15 {
-              truncated_words.push(words[i].to_owned())
-            }
-            String(truncated_words.join(" ") + "...")
-          } else {
-            value
-          }
-        }
-        _ => value
-      }
+    "truncatewords" => sequence_filter(value, "truncatewords", [])
     "strip_tags" =>
       match value {
         String(s) => {
@@ -1667,51 +1437,9 @@ pub fn apply_filter(value : LiquidValue, filter : String) -> LiquidValue {
         }
         _ => value
       }
-    "slice" =>
-      match value {
-        Array(arr) => {
-          // Basic slice - take first 3 elements
-          let sliced : Array[LiquidValue] = []
-          let limit = if arr.length() > 3 { 3 } else { arr.length() }
-          for i in 0..<limit {
-            sliced.push(arr[i])
-          }
-          Array(sliced)
-        }
-        String(s) =>
-          // Slice string - take first 3 characters
-          if s.length() > 3 {
-            String(s[0:3].to_owned())
-          } else {
-            value
-          }
-        _ => value
-      }
-    "offset" =>
-      match value {
-        Array(arr) => {
-          // Basic offset - skip first element
-          let offset_arr : Array[LiquidValue] = []
-          for i in 1..<arr.length() {
-            offset_arr.push(arr[i])
-          }
-          Array(offset_arr)
-        }
-        _ => value
-      }
-    "limit" =>
-      match value {
-        Array(arr) => {
-          // Basic limit - take first 2 elements
-          let limited : Array[LiquidValue] = []
-          let limit = if arr.length() > 2 { 2 } else { arr.length() }
-          for i in 0..<limit {
-            limited.push(arr[i])
-          }
-          Array(limited)
-        }
-        _ => value
-      }
+    "slice" => sequence_filter(value, "slice", [])
+    "offset" => sequence_filter(value, "offset", [])
+    "limit" => sequence_filter(value, "limit", [])
     "group_by" =>
       match value {
         Array(arr) => {

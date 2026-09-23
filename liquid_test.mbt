@@ -858,7 +858,7 @@ test "filter truncate" {
   let result = apply_filter(value, "truncate")
   assert_eq(
     result.to_string(),
-    "This is a very long text that should be truncated ...",
+    "This is a very long text that should be truncat...",
   )
 }
 
@@ -1743,7 +1743,7 @@ test "filter parameters truncate" {
   let context = LiquidContext::new()
   context.set("text", string_value("This is a very long text"))
   let result = template.render(context)
-  assert_eq(result, "This is a ...")
+  assert_eq(result, "This is...")
 }
 
 ///|
@@ -1783,7 +1783,7 @@ test "filter parameters multiple" {
   let context = LiquidContext::new()
   context.set("text", string_value("This is a moderately long text"))
   let result = template.render(context)
-  assert_eq(result, "THIS IS A MODERATELY...")
+  assert_eq(result, "THIS IS A MODERAT...")
 }
 
 ///|
@@ -2633,7 +2633,7 @@ test "slice filter single parameter" {
   ])
   context.set("items", items)
   let result = template.render(context)
-  assert_eq(result, "[c, d]") // Start at index 2, default length 3 (but only 2 remaining)
+  assert_eq(result, "[c]") // Start at index 2, default length 3 (but only 2 remaining)
 }
 
 ///|
@@ -3545,7 +3545,7 @@ test "filter parameter edge cases" {
   let items1 = array_value([string_value("a"), string_value("b")])
   context1.set("items", items1)
   let result1 = template1.render(context1)
-  assert_eq(result1, "[a, b]") // Start at 0
+  assert_eq(result1, "[a]") // Start at 0
 
   // Test slice with position 3
   let template2 = parse("{{ items | slice: 3 }}")
@@ -4080,14 +4080,14 @@ test "filter parameters edge cases truncate" {
     "This is a very long string that should be truncated",
   )
   let result_30 = apply_filter_with_params(long_string, filter_30)
-  assert_eq(result_30.to_string(), "This is a very long string tha...")
+  assert_eq(result_30.to_string(), "This is a very long string ...")
 
   // Test truncate with "50" parameter
   let filter_50 = filter("truncate", ["50"])
   let result_50 = apply_filter_with_params(long_string, filter_50)
   assert_eq(
     result_50.to_string(),
-    "This is a very long string that should be truncate...",
+    "This is a very long string that should be trunc...",
   )
 
   // Test truncate with "100" parameter
@@ -4098,12 +4098,12 @@ test "filter parameters edge cases truncate" {
     "This is a very long string that should be truncated",
   )
 
-  // Test truncate with unknown parameter (should default to 50)
+  // Test truncate with large limit (should preserve the original string)
   let filter_unknown = filter("truncate", ["999"])
   let result_unknown = apply_filter_with_params(long_string, filter_unknown)
   assert_eq(
     result_unknown.to_string(),
-    "This is a very long string that should be truncate...",
+    "This is a very long string that should be truncated",
   )
 
   // Test truncate with no parameters (should default to 50)
@@ -4111,7 +4111,7 @@ test "filter parameters edge cases truncate" {
   let result_no_params = apply_filter_with_params(long_string, filter_no_params)
   assert_eq(
     result_no_params.to_string(),
-    "This is a very long string that should be truncate...",
+    "This is a very long string that should be trunc...",
   )
 
   // Test truncate with string shorter than max_length
@@ -4173,15 +4173,15 @@ test "slice filter parameter variations" {
   let filter_3 = filter("slice", ["3"])
   let result_3 = apply_filter_with_params(arr, filter_3)
   match result_3 {
-    Array(sliced) => assert_eq(sliced.length(), 2) // elements d, e
+    Array(sliced) => assert_eq(sliced.length(), 1) // element d
     _ => fail("Expected Array result")
   }
 
-  // Test slice with unknown start parameter
+  // Test slice with out-of-range start
   let filter_unknown = filter("slice", ["999"])
   let result_unknown = apply_filter_with_params(arr, filter_unknown)
   match result_unknown {
-    Array(sliced) => assert_eq(sliced.length(), 3) // default length 3 from start 0
+    Array(sliced) => assert_eq(sliced.length(), 0) // start beyond the array
     _ => fail("Expected Array result")
   }
 
@@ -4201,11 +4201,11 @@ test "slice filter parameter variations" {
     _ => fail("Expected Array result")
   }
 
-  // Test slice with unknown length parameter
+  // Test slice with length larger than the array
   let filter_unknown_len = filter("slice", ["0", "999"])
   let result_unknown_len = apply_filter_with_params(arr, filter_unknown_len)
   match result_unknown_len {
-    Array(sliced) => assert_eq(sliced.length(), 3) // default length 3
+    Array(sliced) => assert_eq(sliced.length(), 5) // length is capped by the array
     _ => fail("Expected Array result")
   }
 
@@ -4305,21 +4305,21 @@ test "offset and limit filter parameter variations" {
     _ => fail("Expected Array result")
   }
 
-  // Test offset with unknown parameter (should default to 1)
+  // Test offset with offset beyond the array
   let filter_offset_unknown = filter("offset", ["999"])
   let result_offset_unknown = apply_filter_with_params(
     arr, filter_offset_unknown,
   )
   match result_offset_unknown {
-    Array(offset_arr) => assert_eq(offset_arr.length(), 4) // skip first element
+    Array(offset_arr) => assert_eq(offset_arr.length(), 0) // no elements remain
     _ => fail("Expected Array result")
   }
 
-  // Test limit with unknown parameter (should default to 2)
+  // Test limit with limit larger than the array
   let filter_limit_unknown = filter("limit", ["999"])
   let result_limit_unknown = apply_filter_with_params(arr, filter_limit_unknown)
   match result_limit_unknown {
-    Array(limited_arr) => assert_eq(limited_arr.length(), 2) // first 2 elements
+    Array(limited_arr) => assert_eq(limited_arr.length(), 5) // all elements
     _ => fail("Expected Array result")
   }
 }
@@ -4538,7 +4538,7 @@ test "additional edge cases for remaining coverage" {
   let filter_slice_1 = filter("slice", ["1"])
   let result_slice_1 = apply_filter_with_params(arr, filter_slice_1)
   match result_slice_1 {
-    Array(sliced) => assert_eq(sliced.length(), 2) // elements from position 1
+    Array(sliced) => assert_eq(sliced.length(), 1) // one element from position 1
     _ => fail("Expected Array result")
   }
 
@@ -5051,10 +5051,10 @@ test "at filter functionality" {
   let result_neg1 = apply_filter_with_params(arr, filter_neg1)
   assert_eq(result_neg1.to_string(), "fourth")
 
-  // Test at with out of bounds index (unknown parameter "10" defaults to 0)
+  // Test at with out of bounds index
   let filter_oob = filter("at", ["10"])
   let result_oob = apply_filter_with_params(arr, filter_oob)
-  assert_eq(result_oob.to_string(), "first") // Unknown parameter "10" defaults to 0
+  assert_eq(result_oob.to_string(), "null")
 
   // Test at with no parameters (should return first element)
   let filter_no_params = filter("at", [])
@@ -6205,16 +6205,16 @@ test "array index edge cases for at filter" {
     assert_eq(result.to_string(), expected[i])
   }
 
-  // Test out of bounds index (should default to first element)
+  // Test out of bounds index
   let out_of_bounds_filter = filter("at", ["10"])
   let out_result = apply_filter_with_params(test_array, out_of_bounds_filter)
-  assert_eq(out_result.to_string(), "zero") // Should default to first element when out of bounds
+  assert_eq(out_result.to_string(), "null")
 
   // Test -2 with small array
   let small_array = array_value([string_value("only")])
   let small_filter = filter("at", ["-2"])
   let small_result = apply_filter_with_params(small_array, small_filter)
-  assert_eq(small_result.to_string(), "only") // Should default to index 0
+  assert_eq(small_result.to_string(), "null")
 }
 
 ///|
@@ -6344,7 +6344,7 @@ test "advanced string manipulation edge cases" {
   let result_50 = apply_filter(string_value(long_string_50), "truncate")
   assert_eq(result_50.to_string(), long_string_50) // Should not truncate
   let result_51 = apply_filter(string_value(long_string_51), "truncate")
-  assert_eq(result_51.to_string(), long_string_50 + "...") // Should truncate
+  assert_eq(result_51.to_string(), long_string_50[:47].to_owned() + "...") // Should truncate
 }
 
 ///|
