@@ -34,6 +34,8 @@ pub fn evaluate_expression(String, LiquidContext) -> LiquidValue
 
 pub fn filter(String, Array[String]) -> Filter
 
+pub fn float_value(Double) -> LiquidValue
+
 pub fn for_loop_modifiers(Int?, Int?, Bool) -> ForLoopModifiers
 
 pub fn for_node(String, String, Array[LiquidNode]) -> LiquidNode
@@ -177,6 +179,7 @@ pub fn LiquidTemplate::to_json(Self) -> Json
 pub enum LiquidValue {
   String(String)
   Number(Double)
+  Float(Double)
   Bool(Bool)
   Array(Array[LiquidValue])
   Object(Map[String, LiquidValue])

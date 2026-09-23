@@ -40,6 +40,15 @@ fn apply_context_filters(
   for filter_obj in filters {
     if filter_obj.name == "default" {
       value = default_value(value, filter_obj.parameters, context)
+    } else if ["plus", "minus", "times", "divided_by", "modulo", "round"].contains(
+        filter_obj.name,
+      ) &&
+      !filter_obj.parameters.is_empty() {
+      value = typed_numeric_filter(
+        value,
+        filter_obj.name,
+        evaluate_expression(filter_obj.parameters[0], context),
+      )
     } else if filter_obj.name == "concat" {
       let other = match filter_obj.parameters.get(0) {
         Some(expression) => evaluate_expression(expression, context)

@@ -19,32 +19,48 @@ fn numeric_filter(
   if parameters.is_empty() {
     return apply_filter(value, name)
   }
-  let number = match value {
-    Number(n) => Some(n)
-    String(s) => parse_number(s)
+  typed_numeric_filter(value, name, String(unquote_argument(parameters[0])))
+}
+
+///|
+fn numeric_parts(value : LiquidValue) -> (Double, Bool)? {
+  match value {
+    Number(n) => Some((n, n != n.trunc()))
+    Float(n) => Some((n, true))
+    String(s) => parse_number(s).map(fn(n) { (n, s.contains(".")) })
     _ => None
   }
-  guard number is Some(n) else { return value }
-  guard parse_number(unquote_argument(parameters[0])) is Some(p) else {
-    return value
+}
+
+///|
+fn numeric_result(n : Double, floating : Bool) -> LiquidValue {
+  if floating {
+    Float(n)
+  } else {
+    Number(n)
   }
+}
+
+///|
+fn typed_numeric_filter(
+  value : LiquidValue,
+  name : String,
+  operand : LiquidValue,
+) -> LiquidValue {
+  guard numeric_parts(value) is Some((n, left_float)) else { return value }
+  guard numeric_parts(operand) is Some((p, right_float)) else { return value }
+  let floating = left_float || right_float
   match name {
-    "plus" => Number(n + p)
-    "minus" => Number(n - p)
-    "times" => Number(n * p)
+    "plus" => numeric_result(n + p, floating)
+    "minus" => numeric_result(n - p, floating)
+    "times" => numeric_result(n * p, floating)
     "divided_by" =>
       if p == 0 {
         Null
       } else {
-        Number(
-          if unquote_argument(parameters[0]).contains(".") {
-            n / p
-          } else {
-            (n / p).floor()
-          },
-        )
+        numeric_result(if floating { n / p } else { (n / p).floor() }, floating)
       }
-    "modulo" => if p == 0 { Null } else { Number(n % p) }
+    "modulo" => if p == 0 { Null } else { numeric_result(n % p, floating) }
     "round" => {
       if p != p.trunc() || p < -308 || p > 308 {
         return value
@@ -53,11 +69,14 @@ fn numeric_filter(
       for _ in 0..<p.abs().to_int() {
         scale *= 10.0
       }
-      if p < 0 {
-        Number((n / scale).round() * scale)
-      } else {
-        Number((n * scale).round() / scale)
-      }
+      numeric_result(
+        if p < 0 {
+          (n / scale).round() * scale
+        } else {
+          (n * scale).round() / scale
+        },
+        p > 0,
+      )
     }
     _ => value
   }
