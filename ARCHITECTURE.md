@@ -1,7 +1,7 @@
 # Implementation structure
 
 The root package provides the public entry point. Implementation packages and
-black-box test suites live in subdirectories alongside documentation, examples,
+their tests live together in subdirectories alongside documentation, examples,
 and tooling.
 
 ```text
@@ -12,9 +12,6 @@ project/
   internal/
     semantics/             Shared numeric conversion, truthiness, and comparison
     filters/               Typed filter implementations
-  tests/
-    filters/               Filter behavior through the public entry point
-    render/                Template behavior through the public entry point
   examples/basic/                Executable example
 ```
 
@@ -114,7 +111,12 @@ not implement a complete layout or theme loader.
 
 ## Tests
 
-Black-box tests in `tests/` import only the public entry point.
+Tests live beside their implementation packages: value tests in `value/`, direct
+filter tests in `internal/filters/`, and template behavior tests in `engine/`.
+Tests that combine template rendering with filters stay in `engine/`; public
+entry-point dispatch and reference tests stay in the root package.
+All current tests use `_test.mbt` and access package interfaces. `_wbtest.mbt`
+is reserved for white-box tests requiring private implementation access.
 The three checked README examples remain in `README.mbt.md`.
 Tests are grouped by behavior: conditions, assignment, value lookup, template
 composition, loop properties, and individual filter domains. Old AST snapshots

@@ -79,7 +79,10 @@ There are no compatibility aliases.
 Import `bobzhang/liquid` for the public interface. The root package provides the entry point:
 `engine/` owns compilation and rendering, `value/` owns the Liquid value type,
 and `internal/` contains shared value operations and filter implementations.
-Black-box tests live under `tests/filters/` and `tests/render/`.
+Tests live beside the source they exercise. Files ending in `_test.mbt` use
+the package interface (black-box tests); `_wbtest.mbt` is reserved for tests
+that need private implementation access (white-box tests). Public entry-point
+integration tests live in the root package.
 
 ## Runnable example
 
