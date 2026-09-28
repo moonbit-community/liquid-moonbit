@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "bobzhang/liquid/value"
+package "moonbit-community/liquid/value"
 
 // Values
 pub fn array_value(Array[LiquidValue]) -> LiquidValue

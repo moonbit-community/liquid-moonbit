@@ -1,5 +1,5 @@
 import {
-  "bobzhang/liquid",
+  "moonbit-community/liquid",
 }
 
 pkgtype(kind: "executable")

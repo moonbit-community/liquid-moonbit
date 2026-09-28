@@ -1,4 +1,4 @@
 import {
-  "bobzhang/liquid/engine",
-  "bobzhang/liquid/value",
+  "moonbit-community/liquid/engine",
+  "moonbit-community/liquid/value",
 }

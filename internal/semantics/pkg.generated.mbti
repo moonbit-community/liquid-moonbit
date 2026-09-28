@@ -1,8 +1,8 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "bobzhang/liquid/internal/semantics"
+package "moonbit-community/liquid/internal/semantics"
 
 import {
-  "bobzhang/liquid/value",
+  "moonbit-community/liquid/value",
 }
 
 // Values

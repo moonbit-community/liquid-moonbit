@@ -1,5 +1,5 @@
 import {
-  "bobzhang/liquid/value",
-  "bobzhang/liquid/internal/semantics",
-  "bobzhang/liquid/internal/filters",
+  "moonbit-community/liquid/value",
+  "moonbit-community/liquid/internal/semantics",
+  "moonbit-community/liquid/internal/filters",
 }

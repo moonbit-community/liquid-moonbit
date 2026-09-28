@@ -72,7 +72,7 @@ remain falsy.
 
 ## Source organization
 
-Import `bobzhang/liquid` for the public interface. The root package provides the entry point:
+Import `moonbit-community/liquid` for the public interface. The root package provides the entry point:
 `engine/` owns compilation and rendering, `value/` owns the Liquid value type,
 and `internal/` contains shared value operations and filter implementations.
 Tests live beside the source they exercise. Files ending in `_test.mbt` use
