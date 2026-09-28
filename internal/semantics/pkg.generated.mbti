@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/liquid/internal/semantics"
+
+import {
+  "bobzhang/liquid/value",
+}
+
+// Values
+pub fn compare_typed_values(@value.LiquidValue, @value.LiquidValue, String) -> Bool
+
+pub fn is_truthy(@value.LiquidValue) -> Bool
+
+pub fn numeric_parts(@value.LiquidValue) -> (Double, Bool)?
+
+pub fn numeric_result(Double, Bool) -> @value.LiquidValue
+
+pub fn parse_integer(String) -> Int?
+
+pub fn parse_number(String) -> Double?
+
+pub fn unquote_argument(String) -> String
+
+pub fn values_equal(@value.LiquidValue, @value.LiquidValue) -> Bool
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits

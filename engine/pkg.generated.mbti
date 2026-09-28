@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/liquid/engine"
+
+import {
+  "bobzhang/liquid/value",
+  "moonbitlang/core/debug",
+}
+
+// Values
+pub fn apply_filter(@value.LiquidValue, String, Array[@value.LiquidValue], options? : Map[String, @value.LiquidValue]) -> Result[@value.LiquidValue, Diagnostic]
+
+pub fn compile(String) -> Result[Template, Array[Diagnostic]]
+
+// Errors
+
+// Types and methods
+pub struct Diagnostic {
+  phase : String
+  code : String
+  message : String
+  offset : Int?
+  template : String?
+} derive(Eq, ToJson, @debug.Debug)
+pub fn Diagnostic::equal(Self, Self) -> Bool
+pub fn Diagnostic::not_equal(Self, Self) -> Bool
+pub fn Diagnostic::to_json(Self) -> Json
+pub fn Diagnostic::to_repr(Self) -> @debug.Repr
+
+type LiquidContext
+pub fn LiquidContext::get(Self, String) -> @value.LiquidValue?
+pub fn LiquidContext::new() -> Self
+pub fn LiquidContext::register_template(Self, String, String) -> Unit
+#alias(op_set)
+pub fn LiquidContext::set(Self, String, @value.LiquidValue) -> Unit
+
+type Template
+pub fn Template::render(Self, LiquidContext) -> Result[String, Array[Diagnostic]]
+
+// Type aliases
+
+// Traits

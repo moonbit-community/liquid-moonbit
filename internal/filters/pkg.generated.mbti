@@ -1,0 +1,21 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/liquid/internal/filters"
+
+import {
+  "bobzhang/liquid/value",
+}
+
+// Values
+pub fn apply_filter(@value.LiquidValue, String, Array[@value.LiquidValue], options? : Map[String, @value.LiquidValue]) -> Result[@value.LiquidValue, FilterError]
+
+// Errors
+
+// Types and methods
+pub struct FilterError {
+  code : String
+  message : String
+}
+
+// Type aliases
+
+// Traits
