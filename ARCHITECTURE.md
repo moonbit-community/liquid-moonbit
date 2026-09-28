@@ -6,7 +6,7 @@ and tooling.
 
 ```text
 project/
-  lib.mbt                  Public entry point: bobzhang/liquid
+  lib.mbt                  Public entry point: moonbit-community/liquid
   engine/                  Parser, compiled templates, contexts, diagnostics, renderer
   value/                   Public LiquidValue type and value constructors
   internal/
@@ -23,7 +23,7 @@ shared AST and execution state remain private.
 `Template`, `LiquidContext`, and `Diagnostic` belong to the public `engine`
 package. `LiquidValue` belongs to the public `value` package. Re-exporting these
 public owners lets external callers use methods and pattern matching with only
-an import of `bobzhang/liquid`. Internal filter errors are translated into public
+an import of `moonbit-community/liquid`. Internal filter errors are translated into public
 diagnostics at the engine interface; no internal types appear in that interface.
 
 ## Primary interface

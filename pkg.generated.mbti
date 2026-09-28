@@ -1,9 +1,9 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "bobzhang/liquid"
+package "moonbit-community/liquid"
 
 import {
-  "bobzhang/liquid/engine",
-  "bobzhang/liquid/value",
+  "moonbit-community/liquid/engine",
+  "moonbit-community/liquid/value",
 }
 
 // Values

@@ -1,4 +1,4 @@
 import {
-  "bobzhang/liquid/value",
+  "moonbit-community/liquid/value",
   "moonbitlang/core/string",
 }
