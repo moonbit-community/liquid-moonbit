@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/liquid"
+
+import {
+  "bobzhang/liquid/engine",
+  "bobzhang/liquid/value",
+}
+
+// Values
+pub fn apply_filter(@value.LiquidValue, String, Array[@value.LiquidValue], options? : Map[String, @value.LiquidValue]) -> Result[@value.LiquidValue, @engine.Diagnostic]
+
+pub fn array_value(Array[@value.LiquidValue]) -> @value.LiquidValue
+
+pub fn bool_value(Bool) -> @value.LiquidValue
+
+pub fn compile(String) -> Result[@engine.Template, Array[@engine.Diagnostic]]
+
+pub fn float_value(Double) -> @value.LiquidValue
+
+pub fn null_value() -> @value.LiquidValue
+
+pub fn number_value(Double) -> @value.LiquidValue
+
+pub fn object_value(Map[String, @value.LiquidValue]) -> @value.LiquidValue
+
+pub fn string_value(String) -> @value.LiquidValue
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub using @engine {type Diagnostic}
+
+pub using @engine {type LiquidContext}
+
+pub using @value {type LiquidValue}
+
+pub using @engine {type Template}
+
+// Traits

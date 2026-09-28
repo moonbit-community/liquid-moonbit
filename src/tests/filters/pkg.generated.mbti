@@ -1,5 +1,5 @@
 // Generated using `moon info`, DON'T EDIT IT
-package "bobzhang/liquid/cmd/main"
+package "bobzhang/liquid/tests/filters"
 
 // Values
 
@@ -10,4 +10,3 @@ package "bobzhang/liquid/cmd/main"
 // Type aliases
 
 // Traits
-

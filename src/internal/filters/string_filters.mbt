@@ -3,17 +3,17 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
   let result = match name {
     "upcase" =>
       match value {
-        String(s) => String(s.to_upper())
+        String(s) => @value.string_value(s.to_upper())
         _ => value
       }
     "downcase" =>
       match value {
-        String(s) => String(s.to_lower())
+        String(s) => @value.string_value(s.to_lower())
         _ => value
       }
     "trim" | "strip" =>
       match value {
-        String(s) => String(s.trim(chars=" \t\n\r").to_owned())
+        String(s) => @value.string_value(s.trim(chars=" \t\n\r").to_owned())
         _ => value
       }
     "escape" =>
@@ -26,18 +26,19 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
             .replace(old=">", new="&gt;")
             .replace(old="\"", new="&quot;")
             .replace(old="'", new="&#39;")
-          String(escaped)
+          @value.string_value(escaped)
         }
         _ => value
       }
     "lstrip" =>
       match value {
-        String(s) => String(s.trim_start(chars=" \t\n\r").to_owned())
+        String(s) =>
+          @value.string_value(s.trim_start(chars=" \t\n\r").to_owned())
         _ => value
       }
     "rstrip" =>
       match value {
-        String(s) => String(s.trim_end(chars=" \t\n\r").to_owned())
+        String(s) => @value.string_value(s.trim_end(chars=" \t\n\r").to_owned())
         _ => value
       }
     "strip_tags" =>
@@ -57,7 +58,7 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
           result = result.replace(old="</a>", new="")
           result = result.replace(old="<span>", new="")
           result = result.replace(old="</span>", new="")
-          String(result)
+          @value.string_value(result)
         }
         _ => value
       }
@@ -77,7 +78,7 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
             prev_length = result.length()
             result = result.replace(old="  ", new=" ")
           }
-          String(result.trim(chars=" ").to_owned())
+          @value.string_value(result.trim(chars=" ").to_owned())
         }
         _ => value
       }
@@ -95,7 +96,7 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
             } else {
               ""
             }
-            String(first_char.to_string() + rest.to_string())
+            @value.string_value(first_char.to_string() + rest.to_string())
           } else {
             value
           }
@@ -103,7 +104,7 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
       }
     "newline_to_br" =>
       match value {
-        String(s) => String(s.replace(old="\n", new="<br>"))
+        String(s) => @value.string_value(s.replace(old="\n", new="<br>"))
         _ => value
       }
     "strip_html" =>
@@ -117,14 +118,16 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
           result = result.replace(old="</div>", new="")
           result = result.replace(old="<p>", new="")
           result = result.replace(old="</p>", new="")
-          String(result)
+          @value.string_value(result)
         }
         _ => value
       }
     "strip_newlines" =>
       match value {
         String(s) =>
-          String(s.replace(old="\n", new="").replace(old="\r", new=""))
+          @value.string_value(
+            s.replace(old="\n", new="").replace(old="\r", new=""),
+          )
         _ => value
       }
     "url_encode" =>
@@ -138,7 +141,7 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
           encoded = encoded.replace(old="?", new="%3F")
           encoded = encoded.replace(old="#", new="%23")
           encoded = encoded.replace(old="+", new="%2B")
-          String(encoded)
+          @value.string_value(encoded)
         }
         _ => value
       }
@@ -153,7 +156,7 @@ fn string_filter(value : LiquidValue, name : String) -> LiquidValue? {
           decoded = decoded.replace(old="%3F", new="?")
           decoded = decoded.replace(old="%23", new="#")
           decoded = decoded.replace(old="%2B", new="+")
-          String(decoded)
+          @value.string_value(decoded)
         }
         _ => value
       }

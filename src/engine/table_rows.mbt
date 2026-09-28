@@ -34,29 +34,44 @@ fn render_table_row(
 
         // Set enhanced tablerowloop object properties
         let tablerowloop_obj = Map([])
-        tablerowloop_obj.set("index", number_value((index + 1).to_double()))
-        tablerowloop_obj.set("index0", number_value(index.to_double()))
+        tablerowloop_obj.set(
+          "index",
+          @value.number_value((index + 1).to_double()),
+        )
+        tablerowloop_obj.set("index0", @value.number_value(index.to_double()))
         tablerowloop_obj.set(
           "col",
-          number_value((index % cols + 1).to_double()),
+          @value.number_value((index % cols + 1).to_double()),
         )
-        tablerowloop_obj.set("col0", number_value((index % cols).to_double()))
-        tablerowloop_obj.set("first", bool_value(index == 0))
-        tablerowloop_obj.set("last", bool_value(index == items.length() - 1))
-        tablerowloop_obj.set("length", number_value(items.length().to_double()))
+        tablerowloop_obj.set(
+          "col0",
+          @value.number_value((index % cols).to_double()),
+        )
+        tablerowloop_obj.set("first", @value.bool_value(index == 0))
+        tablerowloop_obj.set(
+          "last",
+          @value.bool_value(index == items.length() - 1),
+        )
+        tablerowloop_obj.set(
+          "length",
+          @value.number_value(items.length().to_double()),
+        )
 
         // Enhanced tablerowloop properties
-        tablerowloop_obj.set("col_first", bool_value(index % cols == 0))
-        tablerowloop_obj.set("col_last", bool_value(index % cols == cols - 1))
+        tablerowloop_obj.set("col_first", @value.bool_value(index % cols == 0))
+        tablerowloop_obj.set(
+          "col_last",
+          @value.bool_value(index % cols == cols - 1),
+        )
         tablerowloop_obj.set(
           "rindex",
-          number_value((items.length() - index).to_double()),
+          @value.number_value((items.length() - index).to_double()),
         )
         tablerowloop_obj.set(
           "rindex0",
-          number_value((items.length() - index - 1).to_double()),
+          @value.number_value((items.length() - index - 1).to_double()),
         )
-        loop_context.set("tablerowloop", object_value(tablerowloop_obj))
+        loop_context.set("tablerowloop", @value.object_value(tablerowloop_obj))
         output = output + "<td>"
         for body_node in body {
           output = output + render_node_inner(body_node, loop_context, state)

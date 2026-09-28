@@ -1,0 +1,36 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "bobzhang/liquid/value"
+
+// Values
+pub fn array_value(Array[LiquidValue]) -> LiquidValue
+
+pub fn bool_value(Bool) -> LiquidValue
+
+pub fn float_value(Double) -> LiquidValue
+
+pub fn null_value() -> LiquidValue
+
+pub fn number_value(Double) -> LiquidValue
+
+pub fn object_value(Map[String, LiquidValue]) -> LiquidValue
+
+pub fn string_value(String) -> LiquidValue
+
+// Errors
+
+// Types and methods
+pub enum LiquidValue {
+  String(String)
+  Number(Double)
+  Float(Double)
+  Bool(Bool)
+  Array(Array[LiquidValue])
+  Object(Map[String, LiquidValue])
+  Null
+} derive(ToJson)
+pub fn LiquidValue::to_json(Self) -> Json
+pub fn LiquidValue::to_string(Self) -> String
+
+// Type aliases
+
+// Traits

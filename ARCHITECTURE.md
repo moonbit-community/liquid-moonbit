@@ -1,7 +1,32 @@
 # Implementation structure
 
-The library stays in one MoonBit package. Files separate responsibilities; new
-packages or pluggable registries are unnecessary for the current dependency set.
+The module uses `src/` as its source directory. The repository root contains
+project metadata, documentation, examples, and tooling.
+
+```text
+src/
+  lib.mbt                  Public entry point: bobzhang/liquid
+  engine/                  Parser, compiled templates, contexts, diagnostics, renderer
+  value/                   Public LiquidValue type and value constructors
+  internal/
+    semantics/             Shared numeric conversion, truthiness, and comparison
+    filters/               Typed filter implementations
+  tests/
+    filters/               Filter behavior through the public entry point
+    render/                Template behavior through the public entry point
+  cmd/main/                Executable example
+```
+
+Dependencies are acyclic: the entry point re-exports `engine` and `value`;
+`engine` uses the internal filters and semantics packages; filters use semantics;
+both internal packages use `value`. Parser and renderer stay together so their
+shared AST and execution state remain private.
+
+`Template`, `LiquidContext`, and `Diagnostic` belong to the public `engine`
+package. `LiquidValue` belongs to the public `value` package. Re-exporting these
+public owners lets external callers use methods and pattern matching with only
+an import of `bobzhang/liquid`. Internal filter errors are translated into public
+diagnostics at the engine interface; no internal types appear in that interface.
 
 ## Primary interface
 
@@ -16,18 +41,18 @@ New internal node or expression kinds do not change the opaque template interfac
 
 ## Compilation and execution
 
-`parser.mbt` tokenizes and parses template blocks. It records diagnostics for
+`src/engine/parser.mbt` tokenizes and parses template blocks. It records diagnostics for
 unknown/misplaced tags, invalid assignment/loop syntax, empty required arguments,
 unclosed delimiters, and missing block terminators. Parse offsets are zero-based
 UTF-16 code-unit offsets. Errors inside multiline liquid tags point at the opening
 liquid tag.
 
-`compiled_nodes.mbt` defines private render instructions and partial calls.
-The parser builds these instructions directly without an intermediate public AST. `expression_ast.mbt` compiles literal values, property paths, filter
+`src/engine/compiled_nodes.mbt` defines private render instructions and partial calls.
+The parser builds these instructions directly without an intermediate public AST. `src/engine/expression_ast.mbt` compiles literal values, property paths, filter
 calls, and conditions. Compilation preserves Liquid's right-to-left logical
-association. `expressions.mbt` owns truthiness and typed comparisons.
+association. `src/internal/semantics/operations.mbt` owns truthiness and typed comparisons.
 
-`render_nodes.mbt` and `rendering.mbt` execute the compiled instructions.
+`src/engine/render_nodes.mbt` and `src/engine/rendering.mbt` execute the compiled instructions.
 Expressions are evaluated directly without tokenizing them inside loops.
 Registers for loop control, cycles, counters, and ifchanged belong to one render.
 Includes share registers; render partials receive independent registers.
@@ -40,7 +65,7 @@ between renders cannot return stale code.
 
 ## Filters
 
-Every entry point delegates to `apply_filter` in `filters.mbt`.
+Every entry point delegates to `apply_filter` in `src/internal/filters/filters.mbt`.
 Arguments stay as values, including arrays, objects, and floating-point numbers.
 Options such as default's allow_false are passed as named values.
 
@@ -50,7 +75,7 @@ called from a template or a MoonBit function.
 
 ## Errors and compatibility
 
-`diagnostics.mbt` defines machine-readable phase, code, message, optional offset,
+`src/engine/diagnostics.mbt` defines machine-readable phase, code, message, optional offset,
 and optional partial-template name. Runtime errors currently have no source
 offset; the implementation returns None rather than guessing a location.
 
@@ -88,6 +113,8 @@ not implement a complete layout or theme loader.
 
 ## Tests
 
+Black-box tests in `src/tests/` import only the public entry point.
+The three checked README examples remain in `src/README.mbt.md`.
 Tests are grouped by behavior: conditions, assignment, value lookup, template
 composition, loop properties, and individual filter domains. Old AST snapshots
 and removed-API construction tests are retired; behavioral assertions use source

@@ -56,7 +56,7 @@ fn render_node_inner(
       // Check each when branch
       for branch in when_branches {
         let (when_value, when_body) = branch
-        if values_equal(expr_value, when_value.eval(context, state)) {
+        if @semantics.values_equal(expr_value, when_value.eval(context, state)) {
           return render_nodes(when_body, context, state)
         }
       }
@@ -81,7 +81,7 @@ fn render_node_inner(
         "implicit:" +
         values.map(fn(v) { v.length().to_string() + ":" + v }).join("")
       } else {
-        "named:" + unquote_argument(group)
+        "named:" + @semantics.unquote_argument(group)
       }
       let index = state.cycles.get(key).unwrap_or(0) % values.length()
       state.cycles[key] = (index + 1) % values.length()
@@ -118,7 +118,7 @@ fn render_node_inner(
     Capture(var_name, content) => {
       let captured_output = render_nodes(content, context, state)
       // Store captured content in context
-      context.set(var_name, string_value(captured_output))
+      context.set(var_name, @value.string_value(captured_output))
 
       // Capture doesn't produce direct output
       ""

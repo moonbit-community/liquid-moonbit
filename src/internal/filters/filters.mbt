@@ -5,7 +5,7 @@ pub fn apply_filter(
   name : String,
   parameters : Array[LiquidValue],
   options? : Map[String, LiquidValue] = Map([]),
-) -> Result[LiquidValue, Diagnostic] {
+) -> Result[LiquidValue, FilterError] {
   let result = match name {
     "plus" | "minus" | "times" | "divided_by" | "modulo" | "round" => {
       let fallback = if name == "plus" || name == "minus" {
@@ -21,7 +21,7 @@ pub fn apply_filter(
         typed_numeric_filter(
           value,
           name,
-          parameters.get(0).unwrap_or(Number(fallback)),
+          parameters.get(0).unwrap_or(@value.number_value(fallback)),
         )
       }
     }
@@ -41,7 +41,7 @@ pub fn apply_filter(
         _ => false
       }
       if empty {
-        parameters.get(0).unwrap_or(String(""))
+        parameters.get(0).unwrap_or(@value.string_value(""))
       } else {
         value
       }
@@ -49,7 +49,7 @@ pub fn apply_filter(
     "join" =>
       match value {
         Array(items) =>
-          String(
+          @value.string_value(
             items
             .map(LiquidValue::to_string)
             .join(argument_text(parameters, 0, ", ")),
@@ -58,12 +58,12 @@ pub fn apply_filter(
       }
     "split" =>
       match value {
-        String(s) if s.is_empty() => Array([])
+        String(s) if s.is_empty() => @value.array_value([])
         String(s) =>
-          Array(
+          @value.array_value(
             s
             .split(argument_text(parameters, 0, " "))
-            .map(fn(p) { String(p.to_owned()) })
+            .map(fn(p) { @value.string_value(p.to_owned()) })
             .collect(),
           )
         _ => value
@@ -85,7 +85,7 @@ pub fn apply_filter(
           } else {
             argument_text(parameters, 1, "new")
           }
-          String(s.replace(old~, new=replacement))
+          @value.string_value(s.replace(old~, new=replacement))
         }
         _ => value
       }
@@ -93,23 +93,29 @@ pub fn apply_filter(
       match value {
         String(s) => {
           let argument = argument_text(parameters, 0, name)
-          String(if name == "append" { s + argument } else { argument + s })
+          @value.string_value(
+            if name == "append" {
+              s + argument
+            } else {
+              argument + s
+            },
+          )
         }
         _ => value
       }
     "concat" =>
       match (value, parameters) {
-        (Array(items), []) => Array(items.copy())
+        (Array(items), []) => @value.array_value(items.copy())
         (Array(left), [Array(right), ..]) => {
           let combined = left.copy()
           for item in right {
             combined.push(item)
           }
-          Array(combined)
+          @value.array_value(combined)
         }
         _ =>
           return Err(
-            filter_diagnostic("invalid_argument", "concat requires two arrays"),
+            filter_error("invalid_argument", "concat requires two arrays"),
           )
       }
     "push" | "unshift" =>
@@ -118,7 +124,13 @@ pub fn apply_filter(
           let element = parameters
             .get(0)
             .unwrap_or(
-              String(if name == "push" { "pushed" } else { "unshifted" }),
+              @value.string_value(
+                if name == "push" {
+                  "pushed"
+                } else {
+                  "unshifted"
+                },
+              ),
             )
           let result = if name == "push" { items.copy() } else { [element] }
           if name == "push" {
@@ -128,18 +140,20 @@ pub fn apply_filter(
               result.push(item)
             }
           }
-          Array(result)
+          @value.array_value(result)
         }
         _ => value
       }
     "map" =>
       match (value, parameters) {
         (Array(items), [property, ..]) =>
-          Array(
+          @value.array_value(
             items.map(fn(item) {
               match item {
                 Object(fields) =>
-                  fields.get(property.to_string()).unwrap_or(Null)
+                  fields
+                  .get(property.to_string())
+                  .unwrap_or(@value.null_value())
                 _ => item
               }
             }),
@@ -156,7 +170,7 @@ pub fn apply_filter(
                 match item {
                   Object(fields) =>
                     match fields.get(property.to_string()) {
-                      Some(v) => values_equal(v, target)
+                      Some(v) => @semantics.values_equal(v, target)
                       None => false
                     }
                   String(s) => s.contains(target.to_string())
@@ -172,7 +186,7 @@ pub fn apply_filter(
               selected.push(item)
             }
           }
-          Array(selected)
+          @value.array_value(selected)
         }
         _ => value
       }
@@ -186,14 +200,14 @@ pub fn apply_filter(
               filter_sort_key(right, property),
             )
           })
-          Array(sorted)
+          @value.array_value(sorted)
         }
         _ => value
       }
     "pluralize" =>
       match value {
         Number(n) | Float(n) =>
-          String(
+          @value.string_value(
             n.to_string() +
             " " +
             argument_text(
@@ -217,7 +231,7 @@ pub fn apply_filter(
         Some(result) => result
         None =>
           return Err(
-            filter_diagnostic("unknown_filter", "Unknown filter '" + name + "'"),
+            filter_error("unknown_filter", "Unknown filter '" + name + "'"),
           )
       }
   }

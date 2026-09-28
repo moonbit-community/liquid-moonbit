@@ -12,9 +12,9 @@ applications decide how to display or log diagnostics.
 ```mbt check
 ///|
 test {
-  let context = LiquidContext::new()
-  context.set("name", string_value("MoonBit"))
-  let template = compile("Hello {{ name | upcase }}!").unwrap()
+  let context = @liquid.LiquidContext::new()
+  context.set("name", @liquid.string_value("MoonBit"))
+  let template = @liquid.compile("Hello {{ name | upcase }}!").unwrap()
   assert_eq(template.render(context).unwrap(), "Hello MOONBIT!")
 }
 ```
@@ -34,9 +34,11 @@ unknown names and invalid concatenation operands.
 ```mbt check
 ///|
 test {
-  let result = apply_filter(array_value([number_value(1)]), "concat", [
-    array_value([number_value(2)]),
-  ]).unwrap()
+  let result = @liquid.apply_filter(
+    @liquid.array_value([@liquid.number_value(1)]),
+    "concat",
+    [@liquid.array_value([@liquid.number_value(2)])],
+  ).unwrap()
   assert_eq(result.to_string(), "[1, 2]")
 }
 ```
@@ -50,9 +52,9 @@ bounded, and partial diagnostics identify the template.
 ```mbt check
 ///|
 test {
-  let context = LiquidContext::new()
+  let context = @liquid.LiquidContext::new()
   context.register_template("greeting", "Hello {{ name }}!")
-  let template = compile("{% render 'greeting', name: 'Alice' %}").unwrap()
+  let template = @liquid.compile("{% render 'greeting', name: 'Alice' %}").unwrap()
   assert_eq(template.render(context).unwrap(), "Hello Alice!")
 }
 ```
@@ -72,6 +74,13 @@ expression evaluation helpers, layout wrappers, and `ErrorPolicy` have been
 removed. Use `compile`, `Template::render`, and typed `apply_filter` instead.
 There are no compatibility aliases.
 
+## Source organization
+
+Import `bobzhang/liquid` for the public interface. Source code lives under `src/`:
+`engine/` owns compilation and rendering, `value/` owns the Liquid value type,
+and `internal/` contains shared value operations and filter implementations.
+Black-box tests live under `src/tests/filters/` and `src/tests/render/`.
+
 ## Development
 
 ```sh
@@ -86,4 +95,4 @@ moon test --target native
 The reference corpus contains 20 cases generated with Shopify Ruby Liquid 5.4.0.
 It covers selected behavior, not complete standards compliance. Install that gem
 outside this repository, then run `ruby tools/reference_cases.rb --check`.
-See [ARCHITECTURE.md](ARCHITECTURE.md) for module responsibilities and limitations.
+See [ARCHITECTURE.md](https://github.com/moonbit-community/liquid-moonbit/blob/main/ARCHITECTURE.md) for module responsibilities and limitations.

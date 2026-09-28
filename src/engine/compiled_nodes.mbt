@@ -50,5 +50,5 @@ fn compile_partial(source : String) -> PartialCall {
       )
     }
   }
-  { name: unquote_argument(parts[0]), arguments, }
+  { name: @semantics.unquote_argument(parts[0]), arguments, }
 }

@@ -98,7 +98,7 @@ fn parse_for_loop_modifiers(collection_str : String) -> (String, LoopModifiers) 
     if (part == "limit" || part == "offset") &&
       i + 2 < parts.length() &&
       parts[i + 1] == ":" {
-      let count = parse_integer(parts[i + 2].to_owned())
+      let count = @semantics.parse_integer(parts[i + 2].to_owned())
       if part == "limit" {
         limit = count
       } else {

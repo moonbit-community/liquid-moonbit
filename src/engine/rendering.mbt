@@ -215,34 +215,36 @@ fn render_for(
 
         // Set enhanced forloop object properties (based on processed items)
         let forloop_obj = Map([])
-        forloop_obj.set("index", number_value((index + 1).to_double()))
-        forloop_obj.set("index0", number_value(index.to_double()))
-        forloop_obj.set("first", bool_value(index == 0))
+        forloop_obj.set("index", @value.number_value((index + 1).to_double()))
+        forloop_obj.set("index0", @value.number_value(index.to_double()))
+        forloop_obj.set("first", @value.bool_value(index == 0))
         forloop_obj.set(
           "last",
-          bool_value(index == processed_items.length() - 1),
+          @value.bool_value(index == processed_items.length() - 1),
         )
         forloop_obj.set(
           "length",
-          number_value(processed_items.length().to_double()),
+          @value.number_value(processed_items.length().to_double()),
         )
         forloop_obj.set(
           "rindex",
-          number_value((processed_items.length() - index).to_double()),
+          @value.number_value((processed_items.length() - index).to_double()),
         )
         forloop_obj.set(
           "rindex0",
-          number_value((processed_items.length() - index - 1).to_double()),
+          @value.number_value(
+            (processed_items.length() - index - 1).to_double(),
+          ),
         )
 
         // Enhanced forloop properties
-        forloop_obj.set("parentloop", saved_loop.unwrap_or(Null)) // Parent loop (for nested loops)
-        forloop_obj.set("name", string_value(collection.label())) // Collection name
+        forloop_obj.set("parentloop", saved_loop.unwrap_or(@value.null_value())) // Parent loop (for nested loops)
+        forloop_obj.set("name", @value.string_value(collection.label())) // Collection name
 
         // Add cycle functionality to forloop
         let cycle_odd_even = if index % 2 == 0 { "even" } else { "odd" }
-        forloop_obj.set("cycle", string_value(cycle_odd_even))
-        loop_context.set("forloop", object_value(forloop_obj))
+        forloop_obj.set("cycle", @value.string_value(cycle_odd_even))
+        loop_context.set("forloop", @value.object_value(forloop_obj))
         for body_node in body {
           output = output + render_node_inner(body_node, loop_context, state)
         }

@@ -190,8 +190,8 @@ fn date_filter(
     } else {
       date.offset[:3].to_owned() + ":" + date.offset[3:].to_owned()
     }
-    String(formatted + zone)
+    @value.string_value(formatted + zone)
   } else {
-    String(formatted)
+    @value.string_value(formatted)
   }
 }

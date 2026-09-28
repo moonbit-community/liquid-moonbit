@@ -3,14 +3,19 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
   let result = match name {
     "first" =>
       match value {
-        Array(arr) => if arr.length() > 0 { arr[0] } else { Null }
+        Array(arr) =>
+          if arr.length() > 0 {
+            arr[0]
+          } else {
+            @value.null_value()
+          }
         String(s) =>
           if s.length() > 0 {
-            String(s[0:1].to_owned())
+            @value.string_value(s[0:1].to_owned())
           } else {
-            Null
+            @value.null_value()
           }
-        _ => Null
+        _ => @value.null_value()
       }
     "last" =>
       match value {
@@ -18,15 +23,15 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
           if arr.length() > 0 {
             arr[arr.length() - 1]
           } else {
-            Null
+            @value.null_value()
           }
         String(s) =>
           if s.length() > 0 {
-            String(s[s.length() - 1:].to_owned())
+            @value.string_value(s[s.length() - 1:].to_owned())
           } else {
-            Null
+            @value.null_value()
           }
-        _ => Null
+        _ => @value.null_value()
       }
     "reverse" =>
       match value {
@@ -37,7 +42,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
             reversed.push(arr[i])
             i = i - 1
           }
-          Array(reversed)
+          @value.array_value(reversed)
         }
         String(s) => {
           let chars = s.to_string()
@@ -47,7 +52,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
             reversed = reversed + chars[i:i + 1].to_owned()
             i = i - 1
           }
-          String(reversed)
+          @value.string_value(reversed)
         }
         _ => value
       }
@@ -73,7 +78,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
             }
             i = i + 1
           }
-          Array(sorted)
+          @value.array_value(sorted)
         }
         _ => value
       }
@@ -86,9 +91,9 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
             for i in 0..<(arr.length() - 1) {
               new_arr.push(arr[i])
             }
-            Array(new_arr)
+            @value.array_value(new_arr)
           } else {
-            Array(arr)
+            @value.array_value(arr)
           }
         _ => value
       }
@@ -101,9 +106,9 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
             for i in 1..<arr.length() {
               new_arr.push(arr[i])
             }
-            Array(new_arr)
+            @value.array_value(new_arr)
           } else {
-            Array(arr)
+            @value.array_value(arr)
           }
         _ => value
       }
@@ -122,7 +127,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
               Null => ()
             }
           }
-          Array(selected)
+          @value.array_value(selected)
         }
         _ => value
       }
@@ -141,7 +146,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
               _ => ()
             }
           }
-          Array(rejected)
+          @value.array_value(rejected)
         }
         _ => value
       }
@@ -157,7 +162,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
               _ => compacted.push(item)
             }
           }
-          Array(compacted)
+          @value.array_value(compacted)
         }
         _ => value
       }
@@ -179,7 +184,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
               unique.push(item)
             }
           }
-          Array(unique)
+          @value.array_value(unique)
         }
         _ => value
       }
@@ -197,7 +202,7 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
               _ => flattened.push(item)
             }
           }
-          Array(flattened)
+          @value.array_value(flattened)
         }
         _ => value
       }
@@ -219,7 +224,10 @@ fn collection_filter(value : LiquidValue, name : String) -> LiquidValue? {
             }
           }
           // Return array of groups
-          Array([Array(short_items), Array(long_items)])
+          @value.array_value([
+            @value.array_value(short_items),
+            @value.array_value(long_items),
+          ])
         }
         _ => value
       }

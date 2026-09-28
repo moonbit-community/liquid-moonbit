@@ -49,7 +49,7 @@ cases.each do |name, template|
 end
 formatted, errors, status = Open3.capture3("moonfmt", "-", stdin_data: source)
 abort errors unless status.success?
-destination = File.expand_path("../reference_compatibility_test.mbt", __dir__)
+destination = File.expand_path("../src/tests/render/reference_compatibility_test.mbt", __dir__)
 if ARGV[0] == "--write"
   File.write(destination, formatted)
 elsif !File.exist?(destination) || File.read(destination) != formatted

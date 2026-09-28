@@ -1,3 +1,4 @@
 import {
+  "bobzhang/liquid/value",
   "moonbitlang/core/string",
 }

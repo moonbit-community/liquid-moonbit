@@ -26,15 +26,15 @@ fn compile_expression(source : String) -> Expr {
   let value = if text.length() >= 2 &&
     (text[0] == 39 || text[0] == 34) &&
     text[text.length() - 1] == text[0] {
-    Expr::Literal(String(text[1:text.length() - 1].to_owned()))
+    Expr::Literal(@value.string_value(text[1:text.length() - 1].to_owned()))
   } else {
     match text {
-      "true" => Literal(Bool(true))
-      "false" => Literal(Bool(false))
-      "nil" | "null" => Literal(Null)
+      "true" => Literal(@value.bool_value(true))
+      "false" => Literal(@value.bool_value(false))
+      "nil" | "null" => Literal(@value.null_value())
       _ =>
-        match parse_number(text) {
-          Some(n) => Literal(numeric_result(n, text.contains(".")))
+        match @semantics.parse_number(text) {
+          Some(n) => Literal(@semantics.numeric_result(n, text.contains(".")))
           None => Lookup(text.split(".").map(fn(p) { p.to_owned() }).collect())
         }
     }
@@ -81,7 +81,7 @@ fn Expr::eval(
 ) -> LiquidValue {
   match self {
     Literal(value) => value
-    Lookup(path) => lookup_path(context, path).unwrap_or(Null)
+    Lookup(path) => lookup_path(context, path).unwrap_or(@value.null_value())
     Pipeline(expression, filters) => {
       let mut value = expression.eval(context, state)
       for filter in filters {
@@ -96,7 +96,8 @@ fn Expr::eval(
         }
         value = match apply_filter(value, filter.name, arguments, options~) {
           Ok(result) => result
-          Err(diagnostic) => String(report_diagnostic(state, diagnostic))
+          Err(diagnostic) =>
+            @value.string_value(report_diagnostic(state, diagnostic))
         }
       }
       value
@@ -146,9 +147,9 @@ fn Condition::eval(
   state : RenderState,
 ) -> Bool {
   match self {
-    Truth(expression) => is_truthy(expression.eval(context, state))
+    Truth(expression) => @semantics.is_truthy(expression.eval(context, state))
     Compare(left, op, right) =>
-      compare_typed_values(
+      @semantics.compare_typed_values(
         left.eval(context, state),
         right.eval(context, state),
         op,

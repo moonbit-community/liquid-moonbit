@@ -6,7 +6,7 @@ fn integer_argument(
 ) -> Int {
   match parameters.get(index) {
     Some(value) =>
-      match numeric_parts(value) {
+      match @semantics.numeric_parts(value) {
         Some((n, _)) if n >= -2147483648.0 && n <= 2147483647.0 => n.to_int()
         _ => fallback
       }
@@ -43,7 +43,7 @@ fn sequence_filter(
             return value
           }
           let keep = (size - suffix.iter().count()).max(0)
-          String(String::from_array(chars[:keep]) + suffix)
+          @value.string_value(String::from_array(chars[:keep]) + suffix)
         }
         _ => value
       }
@@ -66,7 +66,7 @@ fn sequence_filter(
           if words.length() <= count {
             value
           } else {
-            String(words[:count].to_owned().join(" ") + suffix)
+            @value.string_value(words[:count].to_owned().join(" ") + suffix)
           }
         }
         _ => value
@@ -86,12 +86,12 @@ fn sequence_filter(
       match value {
         Array(items) => {
           let (from, to) = slice_bounds(items.length(), start, count)
-          Array(items[from:to].to_owned())
+          @value.array_value(items[from:to].to_owned())
         }
         String(s) => {
           let chars = s.iter().collect()
           let (from, to) = slice_bounds(chars.length(), start, count)
-          String(String::from_array(chars[from:to]))
+          @value.string_value(String::from_array(chars[from:to]))
         }
         _ => value
       }
@@ -111,9 +111,9 @@ fn sequence_filter(
             .max(0)
             .min(items.length())
           if name == "offset" {
-            Array(items[count:].to_owned())
+            @value.array_value(items[count:].to_owned())
           } else {
-            Array(items[:count].to_owned())
+            @value.array_value(items[:count].to_owned())
           }
         }
         _ => value
@@ -124,7 +124,7 @@ fn sequence_filter(
           let index = integer_argument(parameters, 0, 0)
           items
           .get(if index < 0 { items.length() + index } else { index })
-          .unwrap_or(Null)
+          .unwrap_or(@value.null_value())
         }
         _ => value
       }
