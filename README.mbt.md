@@ -1,13 +1,67 @@
 # Liquid for MoonBit
 
-A Liquid template engine with reusable compiled templates, typed filter arguments,
-and structured diagnostics. The package also includes Jekyll/Shopify-inspired
-extensions; it does not claim full compatibility with every Liquid dialect.
+A Liquid template engine for MoonBit with reusable compiled templates, typed
+filter arguments, and structured diagnostics. Use it to render caller-supplied
+text templates with strings, numbers, booleans, arrays, objects, and null values.
+The library runs on wasm, wasm-gc, JavaScript, and native backends.
+
+## Version and installation
+
+**This README describes the unreleased API on `main`.** The latest registry
+release checked on September 28, 2026 is `bobzhang/liquid@0.1.1`, which uses the
+old API. The version in `moon.mod` has not yet been bumped. Installing `0.1.1`
+alone will not provide the `compile` interface shown below.
+
+To try the current implementation directly:
+
+```sh
+git clone https://github.com/moonbit-community/liquid-moonbit.git
+cd liquid-moonbit
+moon run examples/basic --target native
+```
+
+To use this checkout from an existing application, put the two modules beside a
+`moon.work` file:
+
+```text
+workspace/
+  moon.work
+  my-app/
+  liquid-moonbit/
+```
+
+```moonbit nocheck
+// moon.work
+members = ["my-app", "liquid-moonbit"]
+```
+
+From `my-app/`, declare the dependency:
+
+```sh
+moon add bobzhang/liquid@0.1.1
+```
+
+The workspace resolves that dependency to the local checkout, overriding the
+registry version. Without the workspace, this command installs the old release.
+See MoonBit's [local dependency documentation](https://docs.moonbitlang.com/en/latest/toolchain/moon/module.html#dependency-management).
+Add the package import to your application's `moon.pkg`:
+
+```moonbit nocheck
+///|
+import {
+  "bobzhang/liquid",
+}
+```
+
+The examples below use that import as `@liquid`. Their `test` blocks also serve
+as executable documentation in this repository. For upgrades from the old API,
+see [MIGRATION.md](MIGRATION.md).
 
 ## Compile and render
 
-Compile once, then render with a context. Both operations return `Result`;
-applications decide how to display or log diagnostics.
+Compile a template once and render it with a context. Both operations return
+`Result`; applications decide how to handle failures. The first example uses
+`unwrap()` for brevity; see error handling below for fallible input.
 
 ```mbt check
 ///|
@@ -19,17 +73,37 @@ test {
 }
 ```
 
-Templates support output pipelines, assignment, capture, conditions, case,
-loops, loop control, counters, cycle, ifchanged, raw text, comments, and whitespace
-control. Context values can be strings, numbers, explicit floats, booleans,
-arrays, objects, or null. Use `float_value` to preserve floating arithmetic when
-supplying an integral float from the host.
+Templates can combine conditions, loops, and filters:
+
+```mbt check
+///|
+test {
+  let context = @liquid.LiquidContext::new()
+  context.set(
+    "names",
+    @liquid.array_value([
+      @liquid.string_value("Ada"),
+      @liquid.string_value("Lin"),
+    ]),
+  )
+  let template = @liquid.compile(
+    "{% for name in names %}{% if forloop.first %}Hello {% endif %}{{ name }}{% unless forloop.last %}, {% endunless %}{% else %}Nobody{% endfor %}",
+  ).unwrap()
+  assert_eq(template.render(context).unwrap(), "Hello Ada, Lin")
+}
+```
+
+Use `string_value`, `number_value`, `float_value`, `bool_value`, `array_value`,
+`object_value`, and `null_value` to supply data. Use `float_value(4)` when an
+integral host number must retain floating-point semantics, such as a divisor
+that should produce `2.5` from `10`. See [NUMERIC_VALUES.md](NUMERIC_VALUES.md).
 
 ## Typed filters
 
-Filter arguments are values, not strings containing Liquid syntax. Literal quote
-characters remain part of a supplied string. Filters return diagnostics for
-unknown names and invalid concatenation operands.
+Template filter arguments are expressions: quote literal strings; bare names
+resolve against the context. Direct `apply_filter` calls accept evaluated
+`LiquidValue` arguments. Do not add Liquid quoting to those strings: quote
+characters are preserved as data.
 
 ```mbt check
 ///|
@@ -43,11 +117,16 @@ test {
 }
 ```
 
+`apply_filter` returns `Result[LiquidValue, Diagnostic]`; unknown filters and
+invalid concatenation operands return `Err`. Named options use the optional
+`options` map, for example `allow_false` on `default`.
+
 ## Registered templates
 
-`include` shares the caller's variables; `render` starts an isolated context with
-explicit arguments. Register source text on the context. Recursive partials are
-bounded, and partial diagnostics identify the template.
+Register template source with `context.register_template(name, source)`.
+The library does not read template files from disk. `include` shares the caller's
+variables; `render` starts an isolated variable context with explicit arguments.
+Both can access registered templates. Partial recursion is bounded.
 
 ```mbt check
 ///|
@@ -59,49 +138,81 @@ test {
 }
 ```
 
-## Diagnostics and API changes
+## Error handling and context lifetime
 
-`Diagnostic` exposes `phase`, `code`, `message`, `offset`, and `template`.
-Parse offsets identify an opening tag; runtime offsets are currently absent.
-Rendering returns `Err` if diagnostics occur. Context mutations performed before
-an error are not rolled back; use a fresh context when transactional behavior is
-needed. Missing output values are errors unless handled by a filter such as
-`default`; absent values in conditions remain falsy.
+Handle compilation and rendering failures separately. This example exercises a
+missing-variable error and a syntax error without unwrapping either result:
 
-This refactor intentionally breaks the former API. The public AST, node
-constructors, `parse`, `LiquidTemplate`, string-parameter filter wrappers,
-expression evaluation helpers, layout wrappers, and `ErrorPolicy` have been
-removed. Use `compile`, `Template::render`, and typed `apply_filter` instead.
-There are no compatibility aliases.
-
-## Source organization
-
-Import `bobzhang/liquid` for the public interface. The root package provides the entry point:
-`engine/` owns compilation and rendering, `value/` owns the Liquid value type,
-and `internal/` contains shared value operations and filter implementations.
-Tests live beside the source they exercise. Files ending in `_test.mbt` use
-the package interface (black-box tests); `_wbtest.mbt` is reserved for tests
-that need private implementation access (white-box tests). Public entry-point
-integration tests live in the root package.
-
-## Runnable example
-
-```sh
-moon run examples/basic --target native
+```mbt check
+///|
+test {
+  let context = @liquid.LiquidContext::new()
+  match @liquid.compile("Hello {{ missing }}!") {
+    Err(errors) => fail("Unexpected compile error: " + errors[0].message)
+    Ok(template) =>
+      match template.render(context) {
+        Ok(_) => fail("Expected a missing-variable error")
+        Err(errors) => {
+          assert_eq(errors[0].phase, "render")
+          assert_eq(errors[0].code, "missing_variable")
+          assert_eq(errors[0].offset, None)
+        }
+      }
+  }
+  match @liquid.compile("Hello {{ name") {
+    Ok(_) => fail("Expected an unclosed output tag")
+    Err(errors) => {
+      assert_eq(errors[0].phase, "parse")
+      assert_eq(errors[0].code, "unclosed_tag")
+      assert_eq(errors[0].offset, Some(6))
+    }
+  }
+}
 ```
+
+Each diagnostic exposes `phase`, `code`, `message`, `offset`, and `template`.
+Parse offsets are zero-based UTF-16 code-unit offsets identifying an opening
+tag, not line numbers or byte offsets. Runtime offsets are currently `None`.
+Partial-template failures carry a template name where available; errors can be
+serialized with `to_json()` for application logging.
+
+Missing values in `{{ output }}` are errors unless handled by a filter such as
+`default`. Missing values in conditions are falsy. Rendering returns `Err` when
+diagnostics occur, rather than returning partial output or inserting error text.
+
+**Rendering can modify the supplied context.** `assign`, `capture`, and shared
+includes can leave variables behind, even if rendering later fails. Reusing a
+context can therefore affect subsequent renders. Use a fresh context per
+independent request to isolate variable bindings; this does not provide
+transactional commit/rollback or deep-copy shared arrays and objects.
+
+## Supported scope and limitations
+
+This is a general-purpose Liquid implementation with selected extensions, not
+a complete Shopify theme runtime or a claim of full Liquid conformance.
+
+| Area | Current scope |
+| --- | --- |
+| Core templates | Output pipelines, assignment, capture, conditions, case, loops with modifiers and else, break/continue, counters, cycle, ifchanged, raw, comments, and whitespace control |
+| Common filters | String case/escaping/replacement, split/join, slice/truncate, array selection/sorting, concat, arithmetic, rounding, default, and date formatting |
+| Extensions | Includes additional filters such as `offset`, `limit`, `at`, and money formatting; behavior and convenience defaults can differ from other Liquid implementations |
+| Partials | Caller-registered source templates for `include` and `render`; no automatic filesystem or theme loading |
+| `layout` and `section` | **Placeholders only:** `layout` emits a comment; `section` emits an empty HTML wrapper with a comment. Neither loads or composes templates. Do not rely on these tags for working layouts or sections |
+
+Some filters accept convenience defaults, such as a three-element `slice` when
+no arguments are supplied. Pass explicit arguments when matching another
+Liquid implementation's behavior matters.
+
+Runtime source locations, comprehensive execution/output limits, and broader
+language conformance remain incomplete. The partial nesting limit alone does
+not make this library a resource-bounded sandbox for untrusted templates.
 
 ## Development
 
-```sh
-moon check --target all --deny-warn --warn-list +25+73
-moon fmt --check
-moon test --target wasm
-moon test --target wasm-gc
-moon test --target js
-moon test --target native
-```
+Ruby is not required to use this library or run ordinary `moon test` commands.
+It is used only to regenerate or verify the 20 reference cases against Shopify
+Ruby Liquid 5.4.0; those cases do not establish complete conformance.
 
-The reference corpus contains 20 cases generated with Shopify Ruby Liquid 5.4.0.
-It covers selected behavior, not complete standards compliance. Install that gem
-outside this repository, then run `ruby tools/reference_cases.rb --check`.
-See [ARCHITECTURE.md](https://github.com/moonbit-community/liquid-moonbit/blob/main/ARCHITECTURE.md) for module responsibilities and limitations.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for checks, reference fixtures, toolchain
+notes, and colocated test conventions, and [ARCHITECTURE.md](ARCHITECTURE.md)
+for package responsibilities.
