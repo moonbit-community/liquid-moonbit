@@ -59,21 +59,16 @@ test {
 }
 ```
 
-## Diagnostics and API changes
+## Diagnostics
 
 `Diagnostic` exposes `phase`, `code`, `message`, `offset`, and `template`.
 Parse offsets identify an opening tag using zero-based UTF-16 code units;
 runtime offsets are currently absent.
 Rendering returns `Err` if diagnostics occur. Context mutations performed before
 an error are not rolled back. A fresh context isolates variable bindings between
-renders; it does not provide transactional rollback. Missing output values are errors unless handled by a filter such as
-`default`; absent values in conditions remain falsy.
-
-The unreleased API intentionally breaks compatibility with `0.1.1`. The public AST, node
-constructors, `parse`, `LiquidTemplate`, string-parameter filter wrappers,
-expression evaluation helpers, layout wrappers, and `ErrorPolicy` have been
-removed. Use `compile`, `Template::render`, and typed `apply_filter` instead.
-There are no compatibility aliases.
+renders; it does not provide transactional rollback. Missing output values are
+errors unless handled by a filter such as `default`; absent values in conditions
+remain falsy.
 
 ## Source organization
 
