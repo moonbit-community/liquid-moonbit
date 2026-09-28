@@ -4,8 +4,6 @@ A Liquid template engine with reusable compiled templates, typed filter argument
 and structured diagnostics. The package also includes Jekyll/Shopify-inspired
 extensions; it does not claim full compatibility with every Liquid dialect.
 
-This README describes the unreleased API on `main`, not the published `0.1.1` API.
-
 ## Compile and render
 
 Compile once, then render with a context. Both operations return `Result`;
