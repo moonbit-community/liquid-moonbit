@@ -1,10 +1,11 @@
 # Implementation structure
 
-The module uses `src/` as its source directory. The repository root contains
-project metadata, documentation, examples, and tooling.
+The root package provides the public entry point. Implementation packages and
+black-box test suites live in subdirectories alongside documentation, examples,
+and tooling.
 
 ```text
-src/
+project/
   lib.mbt                  Public entry point: bobzhang/liquid
   engine/                  Parser, compiled templates, contexts, diagnostics, renderer
   value/                   Public LiquidValue type and value constructors
@@ -41,18 +42,18 @@ New internal node or expression kinds do not change the opaque template interfac
 
 ## Compilation and execution
 
-`src/engine/parser.mbt` tokenizes and parses template blocks. It records diagnostics for
+`engine/parser.mbt` tokenizes and parses template blocks. It records diagnostics for
 unknown/misplaced tags, invalid assignment/loop syntax, empty required arguments,
 unclosed delimiters, and missing block terminators. Parse offsets are zero-based
 UTF-16 code-unit offsets. Errors inside multiline liquid tags point at the opening
 liquid tag.
 
-`src/engine/compiled_nodes.mbt` defines private render instructions and partial calls.
-The parser builds these instructions directly without an intermediate public AST. `src/engine/expression_ast.mbt` compiles literal values, property paths, filter
+`engine/compiled_nodes.mbt` defines private render instructions and partial calls.
+The parser builds these instructions directly without an intermediate public AST. `engine/expression_ast.mbt` compiles literal values, property paths, filter
 calls, and conditions. Compilation preserves Liquid's right-to-left logical
-association. `src/internal/semantics/operations.mbt` owns truthiness and typed comparisons.
+association. `internal/semantics/operations.mbt` owns truthiness and typed comparisons.
 
-`src/engine/render_nodes.mbt` and `src/engine/rendering.mbt` execute the compiled instructions.
+`engine/render_nodes.mbt` and `engine/rendering.mbt` execute the compiled instructions.
 Expressions are evaluated directly without tokenizing them inside loops.
 Registers for loop control, cycles, counters, and ifchanged belong to one render.
 Includes share registers; render partials receive independent registers.
@@ -65,7 +66,7 @@ between renders cannot return stale code.
 
 ## Filters
 
-Every entry point delegates to `apply_filter` in `src/internal/filters/filters.mbt`.
+Every entry point delegates to `apply_filter` in `internal/filters/filters.mbt`.
 Arguments stay as values, including arrays, objects, and floating-point numbers.
 Options such as default's allow_false are passed as named values.
 
@@ -75,7 +76,7 @@ called from a template or a MoonBit function.
 
 ## Errors and compatibility
 
-`src/engine/diagnostics.mbt` defines machine-readable phase, code, message, optional offset,
+`engine/diagnostics.mbt` defines machine-readable phase, code, message, optional offset,
 and optional partial-template name. Runtime errors currently have no source
 offset; the implementation returns None rather than guessing a location.
 
@@ -113,8 +114,8 @@ not implement a complete layout or theme loader.
 
 ## Tests
 
-Black-box tests in `src/tests/` import only the public entry point.
-The three checked README examples remain in `src/README.mbt.md`.
+Black-box tests in `tests/` import only the public entry point.
+The three checked README examples remain in `README.mbt.md`.
 Tests are grouped by behavior: conditions, assignment, value lookup, template
 composition, loop properties, and individual filter domains. Old AST snapshots
 and removed-API construction tests are retired; behavioral assertions use source

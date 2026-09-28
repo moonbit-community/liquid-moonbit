@@ -76,10 +76,10 @@ There are no compatibility aliases.
 
 ## Source organization
 
-Import `bobzhang/liquid` for the public interface. Source code lives under `src/`:
+Import `bobzhang/liquid` for the public interface. The root package provides the entry point:
 `engine/` owns compilation and rendering, `value/` owns the Liquid value type,
 and `internal/` contains shared value operations and filter implementations.
-Black-box tests live under `src/tests/filters/` and `src/tests/render/`.
+Black-box tests live under `tests/filters/` and `tests/render/`.
 
 ## Development
 
