@@ -15,7 +15,7 @@ project/
   tests/
     filters/               Filter behavior through the public entry point
     render/                Template behavior through the public entry point
-  cmd/main/                Executable example
+  examples/basic/                Executable example
 ```
 
 Dependencies are acyclic: the entry point re-exports `engine` and `value`;

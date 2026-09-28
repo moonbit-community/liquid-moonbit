@@ -81,6 +81,12 @@ Import `bobzhang/liquid` for the public interface. The root package provides the
 and `internal/` contains shared value operations and filter implementations.
 Black-box tests live under `tests/filters/` and `tests/render/`.
 
+## Runnable example
+
+```sh
+moon run examples/basic --target native
+```
+
 ## Development
 
 ```sh
