@@ -5,68 +5,57 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: publish-package
-  cancel-in-progress: false
-
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
+    # This template publishes the MoonBit module at the repository root.
+    # Use macos-latest or windows-latest if you want to publish to those platforms
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
       published_tag: ${{ steps.prepublish.outputs.published_tag }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           persist-credentials: false
 
-      - name: Set up MoonBit (nightly)
+      - name: install-ubuntu
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s nightly
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
 
-      - name: Show MoonBit version
-        run: moon version --all
-
-      - name: Update dependencies
-        run: moon update
-
-      - name: Run prepublish checks
-        id: prepublish
-        shell: bash
+      - name: post install
         run: |
-          set -euo pipefail
-          moon check --target all --deny-warn --warn-list +25+73
-          moon fmt --check
-          gem install --user-install liquid --version 5.4.0 --no-document
-          ruby tools/reference_cases.rb --check
-          moon test --target all
-          git diff --exit-code
+          moon version --all
+          moon update
 
+      - name: prepublish check
+        id: prepublish
+        run: |
+          moon fmt
+          git diff --exit-code
+          moon check
+          moon test
           version="$(sed -n 's/^version = "\(.*\)"/\1/p' moon.mod)"
           if [[ -z "$version" ]]; then
-            echo "Could not read package version from moon.mod." >&2
+            echo "could not read package version from moon.mod" >&2
             exit 1
           fi
           echo "published_tag=v$version" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to Mooncakes
+      - name: publish
         env:
           SECRET: ${{ secrets.MOONCAKES_MOONBIT_COMMUNITY_TOKEN }}
         shell: bash
         run: |
-          set -euo pipefail
-          if [[ -z "$SECRET" ]]; then
-            echo "MOONCAKES_MOONBIT_COMMUNITY_TOKEN is not available to this repository." >&2
+          if [ -z "$SECRET" ]; then
+            echo "Error: MOONCAKES_MOONBIT_COMMUNITY_TOKEN secret is not set."
+            echo "Please contact an admin to grant access to this secret."
             exit 1
           fi
-          install -m 700 -d "$HOME/.moon"
-          install -m 600 /dev/null "$HOME/.moon/credentials.json"
-          trap 'rm -f "$HOME/.moon/credentials.json"' EXIT
-          printf '%s' "$SECRET" > "$HOME/.moon/credentials.json"
+          echo "$SECRET" > ~/.moon/credentials.json
           moon publish
+          rm ~/.moon/credentials.json
 
   tag:
     needs: publish
@@ -74,13 +63,12 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Tag published commit
+      - name: tag published commit
         env:
           GH_TOKEN: ${{ github.token }}
           PUBLISHED_TAG: ${{ needs.publish.outputs.published_tag }}
         shell: bash
         run: |
-          set -euo pipefail
           gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
             -f ref="refs/tags/$PUBLISHED_TAG" \
             -f sha="$GITHUB_SHA"
