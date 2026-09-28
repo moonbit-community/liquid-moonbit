@@ -117,7 +117,7 @@ Tests that combine template rendering with filters stay in `engine/`; public
 entry-point dispatch and reference tests stay in the root package.
 All current tests use `_test.mbt` and access package interfaces. `_wbtest.mbt`
 is reserved for white-box tests requiring private implementation access.
-The checked README examples remain in `README.mbt.md`.
+The three checked README examples remain in `README.mbt.md`.
 Tests are grouped by behavior: conditions, assignment, value lookup, template
 composition, loop properties, and individual filter domains. Old AST snapshots
 and removed-API construction tests are retired; behavioral assertions use source
