@@ -13,7 +13,7 @@ priv enum RenderNode {
   Case(Expr, Array[(Expr, Array[RenderNode])], Array[RenderNode]?)
   Assign(String, Expr)
   Cycle(String, Array[String])
-  TableRow(String, Expr, Array[RenderNode], Int)
+  TableRow(String, Expr, Array[RenderNode], Int32)
   Break
   Continue
   Liquid(Array[RenderNode])

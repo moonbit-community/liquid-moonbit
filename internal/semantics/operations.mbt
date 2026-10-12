@@ -153,7 +153,7 @@ pub fn numeric_result(n : Double, floating : Bool) -> LiquidValue {
 }
 
 ///|
-pub fn parse_integer(text : String) -> Int? {
+pub fn parse_integer(text : String) -> Int32? {
   Some(@string.parse_int(unquote_argument(text.trim().to_owned()))) catch {
     _ => None
   }

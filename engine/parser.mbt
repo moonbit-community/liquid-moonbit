@@ -1,8 +1,8 @@
 ///|
 priv enum TemplateToken {
   Text(String)
-  Output(String, Int)
-  Tag(String, Int)
+  Output(String, Int32)
+  Tag(String, Int32)
   Verbatim(String, String)
 }
 
@@ -21,7 +21,7 @@ fn tag_parts(tag : String) -> (String, String) {
 }
 
 ///|
-fn skip_space(source : String, start : Int) -> Int {
+fn skip_space(source : String, start : Int32) -> Int32 {
   let mut pos = start
   while pos < source.length() &&
         (
@@ -128,9 +128,9 @@ fn tokenize_template(
 ///|
 priv struct TemplateParser {
   tokens : Array[TemplateToken]
-  mut pos : Int
+  mut pos : Int32
   diagnostics : Array[Diagnostic]
-  end_offset : Int
+  end_offset : Int32
 }
 
 ///|
@@ -403,7 +403,7 @@ fn TemplateParser::body(
 ///|
 fn parse_template(
   source : String,
-  diagnostics? : Array[Diagnostic] = [],
+  diagnostics~ : Array[Diagnostic] = [],
 ) -> Array[RenderNode] {
   let parser : TemplateParser = {
     tokens: tokenize_template(source, diagnostics),

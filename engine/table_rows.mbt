@@ -3,7 +3,7 @@ fn render_table_row(
   loop_var : String,
   collection : Expr,
   body : Array[RenderNode],
-  cols : Int,
+  cols : Int32,
   context : LiquidContext,
   state : RenderState,
 ) -> String {

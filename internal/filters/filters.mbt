@@ -4,7 +4,7 @@ pub fn apply_filter(
   value : LiquidValue,
   name : String,
   parameters : Array[LiquidValue],
-  options? : Map[String, LiquidValue] = Map([]),
+  options~ : Map[String, LiquidValue] = Map([]),
 ) -> Result[LiquidValue, FilterError] {
   let result = match name {
     "plus" | "minus" | "times" | "divided_by" | "modulo" | "round" => {
@@ -241,7 +241,7 @@ pub fn apply_filter(
 ///|
 fn argument_text(
   parameters : Array[LiquidValue],
-  index : Int,
+  index : Int32,
   fallback : String,
 ) -> String {
   parameters.get(index).map(LiquidValue::to_string).unwrap_or(fallback)

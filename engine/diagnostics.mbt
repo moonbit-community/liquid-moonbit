@@ -5,7 +5,7 @@ pub struct Diagnostic {
   phase : String
   code : String
   message : String
-  offset : Int?
+  offset : Int32?
   template : String?
 } derive(Debug, Eq, ToJson)
 
@@ -13,7 +13,7 @@ pub struct Diagnostic {
 fn parse_diagnostic(
   code : String,
   message : String,
-  offset : Int,
+  offset : Int32,
 ) -> Diagnostic {
   { phase: "parse", code, message, offset: Some(offset), template: None, }
 }
