@@ -6,8 +6,8 @@ priv struct ParsedFilter {
 
 ///|
 priv struct LoopModifiers {
-  limit : Int?
-  offset : Int?
+  limit : Int32?
+  offset : Int32?
   reversed : Bool
 }
 
@@ -18,7 +18,7 @@ fn parsed_filter(name : String, parameters : Array[String]) -> ParsedFilter {
 
 ///|
 /// Find a delimiter outside single- and double-quoted Liquid strings.
-fn find_unquoted(text : String, delimiter : String) -> Int? {
+fn find_unquoted(text : String, delimiter : String) -> Int32? {
   let mut quote : UInt16 = 0
   for i in 0..<text.length() {
     let c = text[i]
@@ -89,8 +89,8 @@ fn parse_for_loop_modifiers(collection_str : String) -> (String, LoopModifiers) 
     .filter(fn(part) { !part.is_empty() })
     .collect()
   let collection = parts[0].to_owned()
-  let mut limit : Int? = None
-  let mut offset : Int? = None
+  let mut limit : Int32? = None
+  let mut offset : Int32? = None
   let mut reversed = false
   let mut i = 1
   while i < parts.length() {

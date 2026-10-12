@@ -1,16 +1,16 @@
 ///|
 priv struct CalendarDate {
-  year : Int
-  month : Int
-  day : Int
-  hour : Int
-  minute : Int
-  second : Int
+  year : Int32
+  month : Int32
+  day : Int32
+  hour : Int32
+  minute : Int32
+  second : Int32
   offset : String
 }
 
 ///|
-fn date_number(text : StringView) -> Int? {
+fn date_number(text : StringView) -> Int32? {
   if text.is_empty() || !text.iter().all(fn(c) { c >= '0' && c <= '9' }) {
     return None
   }
@@ -20,7 +20,7 @@ fn date_number(text : StringView) -> Int? {
 }
 
 ///|
-fn month_lengths(year : Int) -> Array[Int] {
+fn month_lengths(year : Int32) -> Array[Int32] {
   [
     31,
     if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) {
@@ -92,7 +92,7 @@ fn parse_calendar_date(text : String) -> CalendarDate? {
 }
 
 ///|
-fn pad_number(n : Int, width : Int) -> String {
+fn pad_number(n : Int32, width : Int32) -> String {
   let text = n.to_string()
   "0".repeat((width - text.length()).max(0)) + text
 }

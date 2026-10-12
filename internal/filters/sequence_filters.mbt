@@ -1,9 +1,9 @@
 ///|
 fn integer_argument(
   parameters : Array[LiquidValue],
-  index : Int,
-  fallback : Int,
-) -> Int {
+  index : Int32,
+  fallback : Int32,
+) -> Int32 {
   match parameters.get(index) {
     Some(value) =>
       match @semantics.numeric_parts(value) {
@@ -15,7 +15,7 @@ fn integer_argument(
 }
 
 ///|
-fn slice_bounds(size : Int, start : Int, count : Int) -> (Int, Int) {
+fn slice_bounds(size : Int32, start : Int32, count : Int32) -> (Int32, Int32) {
   let start = if start < 0 { size + start } else { start }
   if start < 0 || start >= size || count <= 0 {
     return (0, 0)

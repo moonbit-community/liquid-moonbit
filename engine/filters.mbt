@@ -4,7 +4,7 @@ pub fn apply_filter(
   value : LiquidValue,
   name : String,
   parameters : Array[LiquidValue],
-  options? : Map[String, LiquidValue] = Map([]),
+  options~ : Map[String, LiquidValue] = Map([]),
 ) -> Result[LiquidValue, Diagnostic] {
   match @filters.apply_filter(value, name, parameters, options~) {
     Ok(value) => Ok(value)

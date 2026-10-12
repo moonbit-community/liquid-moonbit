@@ -8,10 +8,10 @@ priv enum RenderFlow {
 ///|
 priv struct RenderState {
   mut flow : RenderFlow
-  mut loops : Int
-  mut depth : Int
-  counters : Map[String, Int]
-  cycles : Map[String, Int]
+  mut loops : Int32
+  mut depth : Int32
+  counters : Map[String, Int32]
+  cycles : Map[String, Int32]
   mut previous : String?
   diagnostics : Array[Diagnostic]
   mut template_name : String?
@@ -268,7 +268,7 @@ fn render_for(
 fn render_error(
   state : RenderState,
   message : String,
-  code? : String = "evaluation_error",
+  code~ : String = "evaluation_error",
 ) -> String {
   report_diagnostic(state, filter_diagnostic(code, message))
 }
